@@ -7,10 +7,13 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { loginSchema, type LoginInput } from "@/lib/validations/auth"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 export default function Home() {
   const [error, setError] = useState<string>("")
   const [success, setSuccess] = useState<string>("")
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
 
   const {
     register,
@@ -24,6 +27,8 @@ export default function Home() {
     setError("")
     setSuccess("")
     try {
+
+      setIsLoading(true)
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -41,11 +46,12 @@ export default function Home() {
       document.cookie = `auth-token=${result.token}; path=/`
       setSuccess("Connexion réussie ! Redirection...")
       
-      setTimeout(() => {
-        window.location.href = "/dashboard"
-      }, 1000)
+      router.push("/dashboard")
+      setIsLoading(false)
+      
     } catch (error) {
       setError(error instanceof Error ? error.message : "Une erreur est survenue")
+      setIsLoading(false)
     }
   }
 
@@ -83,7 +89,7 @@ export default function Home() {
             {error && <p className="text-sm text-red-500">{error}</p>}
             {success && <p className="text-sm text-green-500">{success}</p>}
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Connexion en cours..." : "Se connecter"}
+              {isSubmitting || isLoading ? "Connexion en cours..." : "Se connecter"}
             </Button>
           </form>
         </CardContent>
