@@ -31,7 +31,7 @@ export default function Dashboard() {
         }
 
         setIsLoading(false)
-      } catch (_error) {
+      } catch (_) {
         router.push("/")
       }
     }
