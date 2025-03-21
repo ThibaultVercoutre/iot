@@ -31,7 +31,7 @@ export default function Dashboard() {
         }
 
         setIsLoading(false)
-      } catch (error) {
+      } catch (_error) {
         router.push("/")
       }
     }
@@ -44,7 +44,7 @@ export default function Dashboard() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Chargement...</h1>
-          <p>Vérification de l'authentification...</p>
+          <p>Vérification de l&apos;authentification...</p>
         </div>
       </div>
     )
