@@ -160,10 +160,10 @@ export default function Dashboard() {
         if (!response.ok) throw new Error('Erreur lors de la récupération des données')
         const data = await response.json()
         // S'assurer que chaque capteur a un tableau data initialisé
-        const sensorsWithData = data.map((sensor: any) => ({
+        const sensorsWithData = data.map((sensor: Partial<Sensor>) => ({
           ...sensor,
           data: Array.isArray(sensor.data) ? sensor.data : []
-        }))
+        })) as Sensor[]
         setSensors(sensorsWithData)
         setIsLoading(false)
       } catch (error) {
