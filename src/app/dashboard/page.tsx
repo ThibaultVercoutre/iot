@@ -4,20 +4,21 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { SensorType } from '@prisma/client'
 
 // Types pour les données des capteurs
 interface SensorData {
+  id: number
   value: number
   timestamp: string
+  sensorId: number
 }
 
 interface Sensor {
-  id: string
+  id: number
   name: string
-  type: string
-  lastValue: number
-  lastUpdate: string | null
-  historicalData: SensorData[]
+  type: SensorType
+  data: SensorData[]
 }
 
 // Configuration des couleurs par type de capteur
@@ -37,20 +38,36 @@ const formatDate = (dateString: string) => {
 }
 
 // Fonction pour formater la valeur selon le type
-const formatValue = (value: number, type: string) => {
-  if (type === 'BUTTON') {
-    return value === 1 ? 'ON' : 'OFF'
+const formatValue = (type: SensorType, value: number) => {
+  switch (type) {
+    case SensorType.SOUND:
+      return `${value} dB`
+    case SensorType.VIBRATION:
+    case SensorType.BUTTON:
+      return value === 1 ? 'ON' : 'OFF'
+    default:
+      return value.toString()
   }
-  if (type === 'VIBRATION') {
-    return value === 0 ? 'STABLE' : 'VIBRANT'
+}
+
+// Fonction pour obtenir la couleur selon le type de capteur
+const getSensorColor = (type: SensorType) => {
+  switch (type) {
+    case SensorType.SOUND:
+      return 'text-green-500'
+    case SensorType.VIBRATION:
+      return 'text-red-500'
+    case SensorType.BUTTON:
+      return 'text-orange-500'
+    default:
+      return 'text-gray-500'
   }
-  return `${value} dB`
 }
 
 // Composant pour le graphique d'un capteur
-function SensorChart({ data, name, type }: { data: SensorData[], name: string, type: string }) {
+function SensorChart({ data, name, type }: { data: SensorData[], name: string, type: SensorType }) {
   const color = sensorColors[type as keyof typeof sensorColors]
-  const isBinary = type === 'BUTTON' || type === 'VIBRATION'
+  const isBinary = type === SensorType.BUTTON || type === SensorType.VIBRATION
   
   return (
     <div className="w-full h-[300px] mt-4">
@@ -71,7 +88,7 @@ function SensorChart({ data, name, type }: { data: SensorData[], name: string, t
           />
           <Tooltip 
             labelFormatter={formatDate}
-            formatter={(value: number) => [formatValue(value, type), name]}
+            formatter={(value: number) => [formatValue(type, value), name]}
             contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
           />
           {isBinary ? (
@@ -101,8 +118,8 @@ function SensorChart({ data, name, type }: { data: SensorData[], name: string, t
 
 export default function Dashboard() {
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(true)
   const [sensors, setSensors] = useState<Sensor[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const verifyAuth = async () => {
@@ -136,7 +153,6 @@ export default function Dashboard() {
     verifyAuth()
   }, [router])
 
-  // Effet pour charger les données des capteurs
   useEffect(() => {
     const fetchSensorData = async () => {
       try {
@@ -144,12 +160,49 @@ export default function Dashboard() {
         if (!response.ok) throw new Error('Erreur lors de la récupération des données')
         const data = await response.json()
         setSensors(data)
+        setIsLoading(false)
       } catch (error) {
         console.error('Erreur:', error)
+        setIsLoading(false)
       }
     }
 
     fetchSensorData()
+
+    // Établir la connexion SSE
+    const eventSource = new EventSource('/api/sensors/events')
+
+    eventSource.onmessage = (event) => {
+      const update = JSON.parse(event.data)
+      if (update.type === 'sensor_update') {
+        setSensors(prevSensors => {
+          return prevSensors.map(sensor => {
+            if (sensor.id === update.sensorId) {
+              const newData = {
+                id: Date.now(), // ID temporaire
+                value: update.value,
+                timestamp: update.timestamp,
+                sensorId: update.sensorId
+              }
+              return {
+                ...sensor,
+                data: [newData, ...sensor.data.slice(0, -1)]
+              }
+            }
+            return sensor
+          })
+        })
+      }
+    }
+
+    eventSource.onerror = (error) => {
+      console.error('Erreur SSE:', error)
+      eventSource.close()
+    }
+
+    return () => {
+      eventSource.close()
+    }
   }, [])
 
   if (isLoading) {
@@ -163,25 +216,25 @@ export default function Dashboard() {
       <h1 className="text-2xl font-bold mb-6">Tableau de bord des capteurs</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        {sensors.map(sensor => {
-          const color = sensorColors[sensor.type as keyof typeof sensorColors]
+        {sensors.map((sensor) => {
+          const latestData = sensor.data[0]
           return (
             <Card key={sensor.id} className="overflow-hidden">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <span className={`w-3 h-3 rounded-full`} style={{ backgroundColor: color }} />
+                  <div className={`w-2 h-2 rounded-full bg-current ${getSensorColor(sensor.type)}`} />
                   {sensor.name}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold mb-2" style={{ color }}>
-                  {formatValue(sensor.lastValue, sensor.type)}
+                <div className="text-4xl font-bold mb-2" style={{ color: getSensorColor(sensor.type) }}>
+                  {formatValue(sensor.type, latestData.value)}
                 </div>
                 <div className="text-sm text-gray-500">
-                  Dernière mise à jour: {sensor.lastUpdate ? formatDate(sensor.lastUpdate) : 'Jamais'}
+                  Dernière mise à jour: {new Date(latestData.timestamp).toLocaleTimeString()}
                 </div>
                 <SensorChart 
-                  data={sensor.historicalData}
+                  data={sensor.data}
                   name={sensor.name}
                   type={sensor.type}
                 />
