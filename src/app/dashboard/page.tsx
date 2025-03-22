@@ -23,7 +23,7 @@ interface Sensor {
 // Configuration des couleurs par type de capteur
 const sensorColors = {
   SOUND: "#22c55e",      // Vert
-  VIBRATION: "#3b82f6",  // Bleu
+  VIBRATION: "#f43f5e",  // Rouge pour la vibration
   BUTTON: "#f97316"      // Orange
 }
 
@@ -41,12 +41,16 @@ const formatValue = (value: number, type: string) => {
   if (type === 'BUTTON') {
     return value === 1 ? 'ON' : 'OFF'
   }
+  if (type === 'VIBRATION') {
+    return value === 1 ? 'VIBRATION' : 'STABLE'
+  }
   return `${value} dB`
 }
 
 // Composant pour le graphique d'un capteur
 function SensorChart({ data, name, type }: { data: SensorData[], name: string, type: string }) {
   const color = sensorColors[type as keyof typeof sensorColors]
+  const isBinary = type === 'BUTTON' || type === 'VIBRATION'
   
   return (
     <div className="w-full h-[300px] mt-4">
@@ -60,7 +64,9 @@ function SensorChart({ data, name, type }: { data: SensorData[], name: string, t
             className="text-xs"
           />
           <YAxis 
-            domain={type === 'BUTTON' ? [0, 1] : ['auto', 'auto']}
+            domain={isBinary ? [0, 1] : ['auto', 'auto']}
+            ticks={isBinary ? [0, 1] : undefined}
+            tickFormatter={isBinary ? (value: number) => value === 1 ? 'ON' : 'OFF' : undefined}
             className="text-xs"
           />
           <Tooltip 
@@ -68,14 +74,25 @@ function SensorChart({ data, name, type }: { data: SensorData[], name: string, t
             formatter={(value: number) => [formatValue(value, type), name]}
             contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
           />
-          <Line 
-            type="monotone" 
-            dataKey="value" 
-            stroke={color}
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 4 }}
-          />
+          {isBinary ? (
+            <Line 
+              type="step" 
+              dataKey="value" 
+              stroke={color}
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4 }}
+            />
+          ) : (
+            <Line 
+              type="monotone" 
+              dataKey="value" 
+              stroke={color}
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4 }}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>

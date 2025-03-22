@@ -82,8 +82,8 @@ async function main() {
           value = 1500 + Math.sin(i * 0.2) * 100 + (Math.random() * 20 - 10)
           break
         case SensorType.VIBRATION:
-          // Valeurs entre 1400 et 1600 dB avec une variation progressive différente
-          value = 1500 + Math.cos(i * 0.15) * 100 + (Math.random() * 20 - 10)
+          // Vibration est maintenant binaire comme le bouton (0/1)
+          value = i % 8 < 6 ? 0 : 1 // 75% du temps pas de vibration, 25% vibration
           break
         case SensorType.BUTTON:
           // Alterne entre 0 et 1 avec une tendance à rester dans le même état
