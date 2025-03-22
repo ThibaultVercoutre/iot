@@ -127,7 +127,8 @@ export default function Dashboard() {
         }
 
         setIsLoading(false)
-      } catch (_) {
+      } catch (error) {
+        console.error("Erreur lors de la vérification de l'authentification :", error)
         router.push("/")
       }
     }
