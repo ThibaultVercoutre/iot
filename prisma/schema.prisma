@@ -28,6 +28,8 @@ model Sensor {
   userId    String      // Clé étrangère vers User
   user      User        @relation(fields: [userId], references: [id])
   data      SensorData[] // Relation avec les données
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
   @@unique([deviceId, joinEui, devEui])
   @@index([deviceId])
