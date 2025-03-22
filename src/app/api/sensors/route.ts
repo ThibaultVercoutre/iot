@@ -8,7 +8,7 @@ export async function GET() {
     // Récupérer tous les capteurs avec leur dernière valeur
     const sensors = await prisma.sensor.findMany({
       where: {
-        userId: "1"  // Pour l'instant on utilise l'ID fixe
+        userId: 1  // Pour l'instant on utilise l'ID fixe
       },
       include: {
         data: {
