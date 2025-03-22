@@ -149,13 +149,8 @@ export default function Dashboard() {
       }
     }
 
-    if (!isLoading) {
-      fetchSensorData()
-      // Rafraîchir les données toutes les 10 secondes
-      const interval = setInterval(fetchSensorData, 10000)
-      return () => clearInterval(interval)
-    }
-  }, [isLoading])
+    fetchSensorData()
+  }, [])
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">
