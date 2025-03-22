@@ -159,7 +159,12 @@ export default function Dashboard() {
         const response = await fetch('/api/sensors')
         if (!response.ok) throw new Error('Erreur lors de la récupération des données')
         const data = await response.json()
-        setSensors(data)
+        // S'assurer que chaque capteur a un tableau data initialisé
+        const sensorsWithData = data.map((sensor: any) => ({
+          ...sensor,
+          data: Array.isArray(sensor.data) ? sensor.data : []
+        }))
+        setSensors(sensorsWithData)
         setIsLoading(false)
       } catch (error) {
         console.error('Erreur:', error)
@@ -173,25 +178,33 @@ export default function Dashboard() {
     const eventSource = new EventSource('/api/sensors/events')
 
     eventSource.onmessage = (event) => {
-      const update = JSON.parse(event.data)
-      if (update.type === 'sensor_update') {
-        setSensors(prevSensors => {
-          return prevSensors.map(sensor => {
-            if (sensor.id === update.sensorId) {
-              const newData = {
-                id: Date.now(),
-                value: update.value,
-                timestamp: update.timestamp,
-                sensorId: update.sensorId
+      try {
+        const update = JSON.parse(event.data)
+        if (update.type === 'sensor_update') {
+          setSensors(prevSensors => {
+            if (!Array.isArray(prevSensors)) return []
+            
+            return prevSensors.map(sensor => {
+              if (sensor.id === update.sensorId) {
+                const newData = {
+                  id: Date.now(),
+                  value: update.value,
+                  timestamp: update.timestamp,
+                  sensorId: update.sensorId
+                }
+
+                const currentData = Array.isArray(sensor.data) ? sensor.data : []
+                return {
+                  ...sensor,
+                  data: [newData, ...currentData].slice(0, 50)
+                }
               }
-              return {
-                ...sensor,
-                data: sensor.data ? [newData, ...sensor.data.slice(0, 49)] : [newData]
-              }
-            }
-            return sensor
+              return sensor
+            })
           })
-        })
+        }
+      } catch (error) {
+        console.error('Erreur lors du traitement des données SSE:', error)
       }
     }
 
