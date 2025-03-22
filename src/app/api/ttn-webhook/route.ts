@@ -28,6 +28,7 @@ export async function POST(request: Request) {
     const deviceId = data.end_device_ids.device_id;
     const applicationId = data.end_device_ids.application_ids.application_id;
     const joinEui = data.end_device_ids.join_eui;
+    const devEui = data.end_device_ids.dev_eui;
     const value = data.uplink_message.decoded_payload.value;
 
     // Trouver le capteur associé à ce device_id et join_eui
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
       where: {
         deviceId: deviceId,
         joinEui: joinEui,
+        devEui: devEui,
         user: {
           ttnId: applicationId
         }
@@ -42,18 +44,19 @@ export async function POST(request: Request) {
     });
 
     if (!sensor) {
-      console.warn(`Aucun capteur trouvé pour le device_id: ${deviceId} et join_eui: ${joinEui}`);
+      console.warn(`Aucun capteur trouvé pour le device_id: ${deviceId}, join_eui: ${joinEui} et dev_eui: ${devEui}`);
       return NextResponse.json({ 
         message: 'Aucun capteur correspondant trouvé',
         deviceId,
-        joinEui
+        joinEui,
+        devEui
       }, { status: 404 });
     }
 
     // Créer l'entrée dans la base de données
     const sensorData = await prisma.sensorData.create({
       data: {
-        value,
+        value: value,
         sensorId: sensor.id,
         timestamp: new Date(data.received_at)
       }

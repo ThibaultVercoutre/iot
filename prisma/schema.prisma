@@ -19,32 +19,32 @@ model User {
 }
 
 model Sensor {
-  id          String       @id @default(cuid())
-  name        String      // Nom du capteur
-  type        SensorType  // Type de capteur (SOUND, VIBRATION, BUTTON)
-  deviceId    String      // device_id de TTN
-  joinEui     String      // join_eui de TTN
-  devEui      String
-  userId      String      // Clé étrangère vers User
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  data        SensorData[] // Relation avec les données
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id        Int         @id @default(autoincrement())
+  name      String      // Nom du capteur
+  type      SensorType  // Type de capteur (SOUND, VIBRATION, BUTTON)
+  deviceId  String      @db.VarChar(50)
+  joinEui   String      @db.VarChar(16)
+  devEui    String      @db.VarChar(16)
+  userId    String      // Clé étrangère vers User
+  user      User        @relation(fields: [userId], references: [id])
+  data      SensorData[] // Relation avec les données
 
-  @@index([userId])
+  @@unique([deviceId, joinEui, devEui])
   @@index([deviceId])
   @@index([joinEui])
   @@index([devEui])
+  @@index([userId])
 }
 
 model SensorData {
-  id        String   @id @default(cuid())
-  value     Int      // Valeur du capteur (pour button: 0=false, 1=true)
-  sensorId  String   // Clé étrangère vers Sensor
-  sensor    Sensor   @relation(fields: [sensorId], references: [id], onDelete: Cascade)
+  id        Int      @id @default(autoincrement())
+  value     Int
   timestamp DateTime @default(now())
+  sensorId  Int
+  sensor    Sensor   @relation(fields: [sensorId], references: [id])
 
   @@index([sensorId])
+  @@index([timestamp])
 }
 
 enum SensorType {

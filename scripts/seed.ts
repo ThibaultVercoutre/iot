@@ -55,18 +55,18 @@ async function main() {
   for (const sensorType of sensorTypes) {
     const sensor = await prisma.sensor.upsert({
       where: {
-        // Créer un ID unique basé sur le type et le deviceId
-        id: `${sensorType.type}-${sensorType.deviceId}`,
+        deviceId_joinEui_devEui: {
+          deviceId: sensorType.deviceId,
+          joinEui: sensorType.joinEui,
+          devEui: sensorType.devEui
+        }
       },
       update: {
         name: sensorType.name,
         type: sensorType.type,
-        joinEui: sensorType.joinEui,
-        devEui: sensorType.devEui,
         userId: "1"
       },
       create: {
-        id: `${sensorType.type}-${sensorType.deviceId}`,
         name: sensorType.name,
         type: sensorType.type,
         deviceId: sensorType.deviceId,
