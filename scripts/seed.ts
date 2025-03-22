@@ -38,14 +38,14 @@ async function main() {
     {
       name: "Capteur de vibration",
       type: SensorType.VIBRATION,
-      deviceId: "sound-simulate",
+      deviceId: "vibration-simulate",
       joinEui: "3434343434343434",
       devEui: "70B3D57ED006F47D"
     },
     {
       name: "Bouton",
       type: SensorType.BUTTON,
-      deviceId: "sound-simulate",
+      deviceId: "button-simulate",
       joinEui: "5656565656565656",
       devEui: "70B3D57ED006F47F"
     }
