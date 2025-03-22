@@ -42,7 +42,7 @@ const formatValue = (value: number, type: string) => {
     return value === 1 ? 'ON' : 'OFF'
   }
   if (type === 'VIBRATION') {
-    return value === 1 ? 'VIBRATION' : 'STABLE'
+    return value === 0 ? 'STABLE' : 'VIBRANT'
   }
   return `${value} dB`
 }
