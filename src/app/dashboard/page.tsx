@@ -217,7 +217,7 @@ export default function Dashboard() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {sensors.map((sensor) => {
-          const latestData = sensor.data[0]
+          const latestData = sensor.data && sensor.data.length > 0 ? sensor.data[0] : null;
           return (
             <Card key={sensor.id} className="overflow-hidden">
               <CardHeader>
@@ -227,14 +227,20 @@ export default function Dashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold mb-2" style={{ color: getSensorColor(sensor.type) }}>
-                  {formatValue(sensor.type, latestData.value)}
-                </div>
-                <div className="text-sm text-gray-500">
-                  Dernière mise à jour: {new Date(latestData.timestamp).toLocaleTimeString()}
-                </div>
+                {latestData ? (
+                  <>
+                    <div className="text-4xl font-bold mb-2" style={{ color: sensorColors[sensor.type] }}>
+                      {formatValue(sensor.type, latestData.value)}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      Dernière mise à jour: {new Date(latestData.timestamp).toLocaleTimeString()}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-gray-500">Aucune donnée disponible</div>
+                )}
                 <SensorChart 
-                  data={sensor.data}
+                  data={sensor.data || []}
                   name={sensor.name}
                   type={sensor.type}
                 />
