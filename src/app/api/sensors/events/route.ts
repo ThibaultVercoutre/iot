@@ -7,7 +7,7 @@ interface SensorUpdate {
   type: 'sensor_update';
   sensorId: number;
   value: number;
-  timestamp: Date;
+  timestamp: string;
 }
 
 export async function GET(request: Request) {
@@ -16,50 +16,48 @@ export async function GET(request: Request) {
   const writer = stream.writable.getWriter();
 
   // Fonction pour envoyer un événement au client
-  const sendEvent = async (data: SensorUpdate) => {
+  const sendEvent = async (data: SensorUpdate | { type: 'ping' }) => {
     await writer.write(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
   };
 
-  // Fonction pour récupérer les dernières données d'un capteur
-  const getLatestData = async (sensorId: number) => {
-    const data = await prisma.sensorData.findFirst({
-      where: { sensorId },
-      orderBy: { timestamp: 'desc' }
-    });
-    return data;
-  };
+  // Envoyer un ping toutes les 30 secondes pour maintenir la connexion
+  const pingInterval = setInterval(async () => {
+    await sendEvent({ type: 'ping' });
+  }, 30000);
 
-  // Écouter les changements dans la base de données
-  const checkForUpdates = async () => {
-    const sensors = await prisma.sensor.findMany({
-      where: { userId: 1 },
-      include: {
-        data: {
-          orderBy: { timestamp: 'desc' },
-          take: 1
+  // Vérifier les mises à jour toutes les secondes
+  const checkInterval = setInterval(async () => {
+    try {
+      const sensors = await prisma.sensor.findMany({
+        where: { userId: 1 },
+        include: {
+          data: {
+            orderBy: { timestamp: 'desc' },
+            take: 1
+          }
+        }
+      });
+
+      for (const sensor of sensors) {
+        if (sensor.data && sensor.data.length > 0) {
+          const latestData = sensor.data[0];
+          await sendEvent({
+            type: 'sensor_update',
+            sensorId: sensor.id,
+            value: latestData.value,
+            timestamp: latestData.timestamp.toISOString()
+          });
         }
       }
-    });
-
-    for (const sensor of sensors) {
-      const latestData = await getLatestData(sensor.id);
-      if (latestData) {
-        await sendEvent({
-          type: 'sensor_update',
-          sensorId: sensor.id,
-          value: latestData.value,
-          timestamp: latestData.timestamp
-        });
-      }
+    } catch (error) {
+      console.error('Erreur lors de la vérification des mises à jour:', error);
     }
-  };
+  }, 1000);
 
-  // Vérifier les mises à jour toutes les 2 secondes
-  const interval = setInterval(checkForUpdates, 2000);
-
-  // Nettoyer l'intervalle quand la connexion est fermée
+  // Nettoyer les intervalles quand la connexion est fermée
   request.signal.addEventListener('abort', () => {
-    clearInterval(interval);
+    clearInterval(pingInterval);
+    clearInterval(checkInterval);
     writer.close();
   });
 
