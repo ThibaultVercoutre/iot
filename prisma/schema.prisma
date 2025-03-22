@@ -12,6 +12,39 @@ model User {
   email     String   @unique
   password  String
   name      String?
+  ttnId     String?  // Identifiant TTN de l'utilisateur
+  sensors   Sensor[] // Relation avec les capteurs
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Sensor {
+  id          String       @id @default(cuid())
+  name        String      // Nom du capteur
+  type        SensorType  // Type de capteur (SOUND, VIBRATION, BUTTON)
+  deviceId    String      // device_id de TTN
+  userId      String      // Clé étrangère vers User
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  data        SensorData[] // Relation avec les données
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([deviceId])
+}
+
+model SensorData {
+  id        String   @id @default(cuid())
+  value     Int      // Valeur du capteur (pour button: 0=false, 1=true)
+  sensorId  String   // Clé étrangère vers Sensor
+  sensor    Sensor   @relation(fields: [sensorId], references: [id], onDelete: Cascade)
+  timestamp DateTime @default(now())
+
+  @@index([sensorId])
+}
+
+enum SensorType {
+  SOUND
+  VIBRATION
+  BUTTON
 } 
