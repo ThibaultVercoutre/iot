@@ -8,7 +8,7 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
+  id        Int      @id @default(autoincrement())
   email     String   @unique
   password  String
   name      String?
@@ -25,7 +25,7 @@ model Sensor {
   deviceId  String      @db.VarChar(50)
   joinEui   String      @db.VarChar(16)
   devEui    String      @db.VarChar(16)
-  userId    String      // Clé étrangère vers User
+  userId    Int         // Clé étrangère vers User
   user      User        @relation(fields: [userId], references: [id])
   data      SensorData[] // Relation avec les données
   createdAt DateTime    @default(now())

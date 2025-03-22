@@ -8,7 +8,7 @@ async function main() {
   const hashedPassword = await bcrypt.hash("password123", 10)
 
   const user = await prisma.user.upsert({
-    where: { id: "1" },
+    where: { id: 1 },
     update: {
       email: "test@example.com",
       ttnId: "iot-project-dashboard", // Mettre à jour avec l'application_id TTN
@@ -16,7 +16,7 @@ async function main() {
       name: "Test User"
     },
     create: {
-      id: "1",
+      id: 1,
       email: "test@example.com",
       password: hashedPassword,
       name: "Test User",
@@ -64,7 +64,7 @@ async function main() {
       update: {
         name: sensorType.name,
         type: sensorType.type,
-        userId: "1"
+        userId: 1
       },
       create: {
         name: sensorType.name,
@@ -72,7 +72,7 @@ async function main() {
         deviceId: sensorType.deviceId,
         joinEui: sensorType.joinEui,
         devEui: sensorType.devEui,
-        userId: "1"
+        userId: 1
       },
     })
 
