@@ -15,7 +15,7 @@ interface TTNPayload {
   received_at: string;
   uplink_message: {
     decoded_payload: {
-      value: number;
+      value: number | boolean;
     };
   };
 }
@@ -29,7 +29,8 @@ export async function POST(request: Request) {
     const applicationId = data.end_device_ids.application_ids.application_id;
     const joinEui = data.end_device_ids.join_eui;
     const devEui = data.end_device_ids.dev_eui;
-    const value = data.uplink_message.decoded_payload.value;
+    const rawValue = data.uplink_message.decoded_payload.value;
+    const value = typeof rawValue === 'boolean' ? (rawValue ? 1 : 0) : rawValue;
 
     // Trouver le capteur associé à ce device_id et join_eui
     const sensor = await prisma.sensor.findFirst({
