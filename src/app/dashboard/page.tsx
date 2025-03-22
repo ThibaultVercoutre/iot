@@ -179,14 +179,14 @@ export default function Dashboard() {
           return prevSensors.map(sensor => {
             if (sensor.id === update.sensorId) {
               const newData = {
-                id: Date.now(), // ID temporaire
+                id: Date.now(),
                 value: update.value,
                 timestamp: update.timestamp,
                 sensorId: update.sensorId
               }
               return {
                 ...sensor,
-                data: [newData, ...sensor.data.slice(0, -1)]
+                data: sensor.data ? [newData, ...sensor.data.slice(0, 49)] : [newData]
               }
             }
             return sensor
