@@ -3,13 +3,20 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+interface SensorUpdate {
+  type: 'sensor_update';
+  sensorId: number;
+  value: number;
+  timestamp: Date;
+}
+
 export async function GET(request: Request) {
   const encoder = new TextEncoder();
   const stream = new TransformStream();
   const writer = stream.writable.getWriter();
 
   // Fonction pour envoyer un événement au client
-  const sendEvent = async (data: any) => {
+  const sendEvent = async (data: SensorUpdate) => {
     await writer.write(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
   };
 
