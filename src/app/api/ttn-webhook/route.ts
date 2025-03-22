@@ -9,13 +9,13 @@ interface TTNPayload {
     application_ids: {
       application_id: string;
     };
+    dev_eui: string;
+    join_eui: string;
   };
   received_at: string;
   uplink_message: {
     decoded_payload: {
-      button: boolean;
-      sound: number;
-      vibration: number;
+      value: number;
     };
   };
 }
@@ -27,59 +27,40 @@ export async function POST(request: Request) {
 
     const deviceId = data.end_device_ids.device_id;
     const applicationId = data.end_device_ids.application_ids.application_id;
+    const joinEui = data.end_device_ids.join_eui;
+    const value = data.uplink_message.decoded_payload.value;
 
-    // Trouver les capteurs associés à ce device_id
-    const sensors = await prisma.sensor.findMany({
+    // Trouver le capteur associé à ce device_id et join_eui
+    const sensor = await prisma.sensor.findFirst({
       where: {
         deviceId: deviceId,
+        joinEui: joinEui,
         user: {
-          ttnId: applicationId // Vérifie que l'application_id correspond au ttnId de l'utilisateur
+          ttnId: applicationId
         }
       }
     });
 
-    if (sensors.length === 0) {
-      console.warn(`Aucun capteur trouvé pour le device_id: ${deviceId}`);
+    if (!sensor) {
+      console.warn(`Aucun capteur trouvé pour le device_id: ${deviceId} et join_eui: ${joinEui}`);
       return NextResponse.json({ 
         message: 'Aucun capteur correspondant trouvé',
-        deviceId 
+        deviceId,
+        joinEui
       }, { status: 404 });
     }
 
-    // Créer les entrées pour chaque type de donnée reçue
-    const sensorData = [];
-    
-    for (const sensor of sensors) {
-      let value: number;
-      
-      switch (sensor.type) {
-        case 'SOUND':
-          value = data.uplink_message.decoded_payload.sound;
-          break;
-        case 'VIBRATION':
-          value = data.uplink_message.decoded_payload.vibration;
-          break;
-        case 'BUTTON':
-          value = data.uplink_message.decoded_payload.button ? 1 : 0;
-          break;
-        default:
-          continue;
+    // Créer l'entrée dans la base de données
+    const sensorData = await prisma.sensorData.create({
+      data: {
+        value,
+        sensorId: sensor.id,
+        timestamp: new Date(data.received_at)
       }
-
-      // Créer l'entrée dans la base de données
-      const newData = await prisma.sensorData.create({
-        data: {
-          value,
-          sensorId: sensor.id,
-          timestamp: new Date(data.received_at)
-        }
-      });
-      
-      sensorData.push(newData);
-    }
+    });
 
     return NextResponse.json({ 
-      message: 'Données enregistrées avec succès',
+      message: 'Donnée enregistrée avec succès',
       sensorData 
     }, { status: 200 });
 

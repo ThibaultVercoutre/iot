@@ -23,6 +23,8 @@ model Sensor {
   name        String      // Nom du capteur
   type        SensorType  // Type de capteur (SOUND, VIBRATION, BUTTON)
   deviceId    String      // device_id de TTN
+  joinEui     String      // join_eui de TTN
+  devEui      String
   userId      String      // Clé étrangère vers User
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   data        SensorData[] // Relation avec les données
@@ -31,6 +33,8 @@ model Sensor {
 
   @@index([userId])
   @@index([deviceId])
+  @@index([joinEui])
+  @@index([devEui])
 }
 
 model SensorData {

@@ -31,17 +31,23 @@ async function main() {
     {
       name: "Capteur de son",
       type: SensorType.SOUND,
-      deviceId: "sound-simulate"
+      deviceId: "sound-simulate",
+      joinEui: "1212121212121212",
+      devEui: "70B3D57ED006F3C6"
     },
     {
       name: "Capteur de vibration",
       type: SensorType.VIBRATION,
-      deviceId: "sound-simulate"
+      deviceId: "sound-simulate",
+      joinEui: "3434343434343434",
+      devEui: "70B3D57ED006F47D"
     },
     {
       name: "Bouton",
       type: SensorType.BUTTON,
-      deviceId: "sound-simulate"
+      deviceId: "sound-simulate",
+      joinEui: "5656565656565656",
+      devEui: "70B3D57ED006F47F"
     }
   ]
 
@@ -55,6 +61,8 @@ async function main() {
       update: {
         name: sensorType.name,
         type: sensorType.type,
+        joinEui: sensorType.joinEui,
+        devEui: sensorType.devEui,
         userId: "1"
       },
       create: {
@@ -62,6 +70,8 @@ async function main() {
         name: sensorType.name,
         type: sensorType.type,
         deviceId: sensorType.deviceId,
+        joinEui: sensorType.joinEui,
+        devEui: sensorType.devEui,
         userId: "1"
       },
     })
