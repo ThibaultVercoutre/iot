@@ -18,7 +18,7 @@ interface Sensor {
   id: number
   name: string
   type: SensorType
-  data: SensorData[]
+  historicalData: SensorData[]
 }
 
 // Configuration des couleurs par type de capteur
@@ -159,11 +159,12 @@ export default function Dashboard() {
         const response = await fetch('/api/sensors')
         if (!response.ok) throw new Error('Erreur lors de la récupération des données')
         const data = await response.json()
-        // S'assurer que chaque capteur a un tableau data initialisé
+        // S'assurer que chaque capteur a un tableau historicalData initialisé
         const sensorsWithData = data.map((sensor: Partial<Sensor>) => ({
           ...sensor,
-          data: Array.isArray(sensor.data) ? sensor.data : []
+          historicalData: Array.isArray(sensor.historicalData) ? sensor.historicalData : []
         })) as Sensor[]
+        console.log(sensorsWithData)
         setSensors(sensorsWithData)
         setIsLoading(false)
       } catch (error) {
@@ -208,7 +209,7 @@ export default function Dashboard() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {sensors.map((sensor) => {
-          const latestData = sensor.data && sensor.data.length > 0 ? sensor.data[0] : null;
+          const latestData = sensor.historicalData && sensor.historicalData.length > 0 ? sensor.historicalData[0] : null;
           return (
             <Card key={sensor.id} className="overflow-hidden">
               <CardHeader>
@@ -231,7 +232,7 @@ export default function Dashboard() {
                   <div className="text-gray-500">Aucune donnée disponible</div>
                 )}
                 <SensorChart 
-                  data={sensor.data || []}
+                  data={sensor.historicalData || []}
                   name={sensor.name}
                   type={sensor.type}
                 />

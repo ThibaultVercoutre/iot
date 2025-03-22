@@ -10,20 +10,18 @@ interface SensorUpdate {
   timestamp: string;
 }
 
+// Garder en mémoire les dernières valeurs envoyées
+const lastSentValues = new Map<number, { value: number; timestamp: number }>();
+
 export async function GET(request: Request) {
   const encoder = new TextEncoder();
   const stream = new TransformStream();
   const writer = stream.writable.getWriter();
 
   // Fonction pour envoyer un événement au client
-  const sendEvent = async (data: SensorUpdate | { type: 'ping' }) => {
+  const sendEvent = async (data: SensorUpdate) => {
     await writer.write(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
   };
-
-  // Envoyer un ping toutes les 30 secondes pour maintenir la connexion
-  const pingInterval = setInterval(async () => {
-    await sendEvent({ type: 'ping' });
-  }, 30000);
 
   // Vérifier les mises à jour toutes les 5 secondes
   const checkInterval = setInterval(async () => {
@@ -41,28 +39,46 @@ export async function GET(request: Request) {
       for (const sensor of sensors) {
         if (sensor.data && sensor.data.length > 0) {
           const latestData = sensor.data[0];
-          console.log('Envoi de données:', {
-            type: 'sensor_update',
-            sensorId: sensor.id,
-            value: latestData.value,
-            timestamp: latestData.timestamp.toISOString()
-          });
-          await sendEvent({
-            type: 'sensor_update',
-            sensorId: sensor.id,
-            value: latestData.value,
-            timestamp: latestData.timestamp.toISOString()
-          });
+          const lastSent = lastSentValues.get(sensor.id);
+          const latestTimestamp = new Date(latestData.timestamp).getTime();
+          
+          // Vérifier si les données ont changé
+          if (!lastSent || 
+              lastSent.value !== latestData.value || 
+              lastSent.timestamp < latestTimestamp) {
+            
+            console.log('Comparaison:', {
+              lastSentValue: lastSent?.value,
+              newValue: latestData.value,
+              lastSentTimestamp: lastSent?.timestamp,
+              newTimestamp: latestTimestamp
+            });
+            
+            const update = {
+              type: 'sensor_update' as const,
+              sensorId: sensor.id,
+              value: latestData.value,
+              timestamp: latestData.timestamp.toISOString()
+            };
+            
+            console.log('Nouvelles données détectées:', update);
+            await sendEvent(update);
+            
+            // Mettre à jour les dernières valeurs envoyées
+            lastSentValues.set(sensor.id, {
+              value: latestData.value,
+              timestamp: latestTimestamp
+            });
+          }
         }
       }
     } catch (error) {
       console.error('Erreur lors de la vérification des mises à jour:', error);
     }
-  }, 5000);
+  }, 1000);
 
-  // Nettoyer les intervalles quand la connexion est fermée
+  // Nettoyer l'intervalle quand la connexion est fermée
   request.signal.addEventListener('abort', () => {
-    clearInterval(pingInterval);
     clearInterval(checkInterval);
     writer.close();
   });
