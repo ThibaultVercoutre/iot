@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     await sendEvent({ type: 'ping' });
   }, 30000);
 
-  // Vérifier les mises à jour toutes les secondes
+  // Vérifier les mises à jour toutes les 5 secondes
   const checkInterval = setInterval(async () => {
     try {
       const sensors = await prisma.sensor.findMany({
@@ -41,6 +41,12 @@ export async function GET(request: Request) {
       for (const sensor of sensors) {
         if (sensor.data && sensor.data.length > 0) {
           const latestData = sensor.data[0];
+          console.log('Envoi de données:', {
+            type: 'sensor_update',
+            sensorId: sensor.id,
+            value: latestData.value,
+            timestamp: latestData.timestamp.toISOString()
+          });
           await sendEvent({
             type: 'sensor_update',
             sensorId: sensor.id,
@@ -52,7 +58,7 @@ export async function GET(request: Request) {
     } catch (error) {
       console.error('Erreur lors de la vérification des mises à jour:', error);
     }
-  }, 1000);
+  }, 5000);
 
   // Nettoyer les intervalles quand la connexion est fermée
   request.signal.addEventListener('abort', () => {

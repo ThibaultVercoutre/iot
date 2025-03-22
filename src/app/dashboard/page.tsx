@@ -180,45 +180,7 @@ export default function Dashboard() {
     eventSource.onmessage = (event) => {
       try {
         const update = JSON.parse(event.data);
-        
-        // Ignorer les pings
-        if (update.type === 'ping') return;
-        
-        if (update.type === 'sensor_update') {
-          setSensors(prevSensors => {
-            if (!Array.isArray(prevSensors)) return [];
-            
-            return prevSensors.map(sensor => {
-              if (sensor.id === update.sensorId) {
-                // Vérifier si cette donnée existe déjà
-                const dataExists = sensor.data.some(d => 
-                  d.timestamp === update.timestamp && 
-                  d.value === update.value
-                );
-                
-                if (dataExists) return sensor;
-
-                const newData = {
-                  id: Date.now(),
-                  value: update.value,
-                  timestamp: update.timestamp,
-                  sensorId: update.sensorId
-                };
-
-                // Trier les données par timestamp décroissant
-                const allData = [...sensor.data, newData]
-                  .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-                  .slice(0, 50);
-
-                return {
-                  ...sensor,
-                  data: allData
-                };
-              }
-              return sensor;
-            });
-          });
-        }
+        console.log('Nouvelle donnée reçue:', update);
       } catch (error) {
         console.error('Erreur lors du traitement des données SSE:', error);
       }
