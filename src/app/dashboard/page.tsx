@@ -7,7 +7,9 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { SensorType, Sensor } from '@prisma/client'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, History } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 // Types pour les données des capteurs
 interface SensorData {
@@ -29,6 +31,12 @@ interface SensorWithData extends Sensor {
   threshold?: Threshold
   isInAlert?: boolean
   isBinary: boolean
+  activeAlert?: {
+    id: number
+    startedAt: string
+    sensorValue: number
+    thresholdValue: number | null
+  } | null
 }
 
 interface User {
@@ -190,25 +198,10 @@ export default function Dashboard() {
           userResponse.json()
         ])
 
-        // Vérifier les capteurs qui dépassent leur seuil
+        // Vérifier les capteurs qui ont une alerte active
         const sensorsWithAlertStatus = sensorsData.map((sensor: SensorWithData) => {
-          const latestData = sensor.historicalData && sensor.historicalData.length > 0 
-            ? sensor.historicalData[0] 
-            : null;
-          
-          let isInAlert = false;
-          
-          if (latestData) {
-            // Cas des capteurs numériques avec seuil
-            if (!sensor.isBinary && sensor.threshold) {
-              isInAlert = latestData.value > sensor.threshold.value;
-            }
-            
-            // Cas des capteurs binaires
-            if (sensor.isBinary) {
-              isInAlert = latestData.value === 1; // valeur 1 = ON
-            }
-          }
+          // Un capteur est en alerte s'il a une alerte active
+          const isInAlert = sensor.activeAlert !== null;
           
           return {
             ...sensor,
@@ -262,42 +255,25 @@ export default function Dashboard() {
         throw new Error(errorData?.error || 'Erreur lors de la mise à jour du seuil')
       }
 
-      // Mettre à jour l'état local
-      setSensors(prevSensors => 
-        prevSensors.map(sensor => {
-          if (sensor.id === sensorId) {
-            let isInAlert = false;
-            
-            if (sensor.historicalData && sensor.historicalData.length > 0) {
-              const latestValue = sensor.historicalData[0].value;
-              
-              // Pour les capteurs numériques avec seuil
-              if (!sensor.isBinary) {
-                isInAlert = latestValue > numValue;
-              }
-              
-              // Pour les capteurs binaires
-              if (sensor.isBinary) {
-                isInAlert = latestValue === 1;
-              }
-            }
-            
-            return { 
-              ...sensor, 
-              threshold: { id: 0, value: numValue, sensorId },
-              isInAlert
-            };
-          }
-          return sensor;
-        })
-      )
-      
-      // Mettre à jour la liste des capteurs en alerte
-      setSensorsInAlert(prevSensors => 
-        prevSensors.filter((s: SensorWithData) => s.id !== sensorId).concat(
-          sensors.find(s => s.id === sensorId && s.isInAlert) ? [sensors.find(s => s.id === sensorId)!] : []
-        )
-      )
+      // Récupérer les données à jour après la modification du seuil
+      const sensorsResponse = await fetch('/api/sensors')
+      if (sensorsResponse.ok) {
+        const sensorsData = await sensorsResponse.json()
+        
+        const sensorsWithAlertStatus = sensorsData.map((sensor: SensorWithData) => {
+          const isInAlert = sensor.activeAlert !== null;
+          return {
+            ...sensor,
+            isInAlert
+          };
+        });
+
+        setSensors(sensorsWithAlertStatus);
+        
+        // Filtrer les capteurs en alerte
+        const alertSensors = sensorsWithAlertStatus.filter((s: SensorWithData) => s.isInAlert);
+        setSensorsInAlert(alertSensors);
+      }
     } catch (error) {
       console.error('Erreur lors de la mise à jour du seuil:', error)
     }
@@ -310,19 +286,28 @@ export default function Dashboard() {
   return (
     <div className="container mx-auto p-4">
       {user && (
-        <div className={`mb-6 p-4 rounded-lg ${
-          user.alertsEnabled 
-            ? 'bg-green-100 text-green-800 border border-green-200' 
-            : 'bg-orange-100 text-orange-800 border border-orange-200'
-        }`}>
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5" />
-            <span className="font-medium">
-              {user.alertsEnabled 
-                ? 'Les alertes sont actives' 
-                : 'Les alertes sont suspendues'}
-            </span>
+        <div className="flex items-center justify-between mb-6">
+          <div className={`p-4 rounded-lg flex-1 ${
+            user.alertsEnabled 
+              ? 'bg-green-100 text-green-800 border border-green-200' 
+              : 'bg-orange-100 text-orange-800 border border-orange-200'
+          }`}>
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" />
+              <span className="font-medium">
+                {user.alertsEnabled 
+                  ? 'Les alertes sont actives' 
+                  : 'Les alertes sont suspendues'}
+              </span>
+            </div>
           </div>
+          
+          <Link href="/dashboard/alerts" className="ml-4">
+            <Button>
+              <History className="mr-2 h-4 w-4" />
+              Historique des alertes
+            </Button>
+          </Link>
         </div>
       )}
       
@@ -341,6 +326,11 @@ export default function Dashboard() {
                   formatValue(sensor, sensor.historicalData[0]?.value || 0)
                 } {!sensor.isBinary && sensor.threshold && `(Seuil: ${sensor.threshold.value} ${sensor.type === SensorType.SOUND ? 'dB' : ''})`}
                 {sensor.isBinary && "(Détection d'activité)"}
+                {sensor.activeAlert && (
+                  <span className="text-red-600 ml-2">
+                    (Alerte depuis {new Date(sensor.activeAlert.startedAt).toLocaleTimeString()})
+                  </span>
+                )}
               </li>
             ))}
           </ul>
@@ -388,6 +378,11 @@ export default function Dashboard() {
                   </>
                 ) : (
                   <div className="text-gray-500">Aucune donnée disponible</div>
+                )}
+                {sensor.activeAlert && (
+                  <div className="mt-1 text-red-600 text-sm font-medium">
+                    En alerte depuis {new Date(sensor.activeAlert.startedAt).toLocaleTimeString()}
+                  </div>
                 )}
                 {!sensor.isBinary && (
                   <div className="flex items-center gap-2 mt-2">

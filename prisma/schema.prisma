@@ -32,6 +32,7 @@ model Sensor {
   user      User        @relation(fields: [userId], references: [id])
   data      SensorData[] // Relation avec les données
   threshold Threshold?  // Relation avec le seuil
+  alertLogs AlertLog[]  // Relation avec les logs d'alertes
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
@@ -48,6 +49,8 @@ model SensorData {
   timestamp DateTime @default(now())
   sensorId  Int
   sensor    Sensor   @relation(fields: [sensorId], references: [id])
+  alertLogsStart AlertLog[] @relation("AlertStartData") // Alertes démarrées par cette donnée
+  alertLogsEnd   AlertLog[] @relation("AlertEndData")   // Alertes terminées par cette donnée
 
   @@index([sensorId])
   @@index([timestamp])
@@ -62,6 +65,24 @@ model Threshold {
   updatedAt DateTime @updatedAt
 
   @@index([sensorId])
+}
+
+// Modèle pour l'historique des alertes
+model AlertLog {
+  id          Int       @id @default(autoincrement())
+  startDataId Int       // ID de la donnée qui a déclenché l'alerte
+  endDataId   Int?      // ID de la donnée qui a terminé l'alerte (null si l'alerte est toujours active)
+  thresholdValue Float?  // Valeur du seuil au moment de l'alerte (pour les capteurs numériques)
+  sensorId    Int       // Clé étrangère vers Sensor
+  sensor      Sensor    @relation(fields: [sensorId], references: [id])
+  startData   SensorData @relation("AlertStartData", fields: [startDataId], references: [id])
+  endData     SensorData? @relation("AlertEndData", fields: [endDataId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([sensorId])
+  @@index([startDataId])
+  @@index([endDataId])
 }
 
 enum SensorType {
