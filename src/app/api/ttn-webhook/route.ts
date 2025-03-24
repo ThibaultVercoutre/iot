@@ -79,31 +79,31 @@ export async function POST(request: Request) {
     const activeAlert = await prisma.alertLog.findFirst({
       where: {
         sensorId: sensor.id,
-        endedAt: null
+        endDataId: null
       }
     });
 
     // Pour les capteurs binaires
     if (sensor.isBinary) {
-      // Cas d'une alerte binaire (valeur = 1) et pas d'alerte active
-      if (value === 1 && !activeAlert && alertsEnabled) {
-        // Créer une nouvelle alerte
+      // Pour les capteurs binaires, on crée une alerte à chaque fois qu'on reçoit 1
+      if (value === 1) {
         await prisma.alertLog.create({
           data: {
             sensorId: sensor.id,
-            sensorValue: value,
+            startDataId: sensorData.id,
+            thresholdValue: 1
           }
         });
-        console.log(`Nouvelle alerte créée pour le capteur binaire ${sensor.name}`);
-      } 
-      // Cas où l'alerte est terminée (valeur = 0) et il existe une alerte active
-      else if (value === 0 && activeAlert) {
-        // Fermer l'alerte active
-        await prisma.alertLog.update({
-          where: { id: activeAlert.id },
-          data: { endedAt: new Date() }
-        });
-        console.log(`Alerte terminée pour le capteur binaire ${sensor.name}`);
+      } else {
+        // Si on reçoit 0, on termine l'alerte active si elle existe
+        if (activeAlert) {
+          await prisma.alertLog.update({
+            where: { id: activeAlert.id },
+            data: {
+              endDataId: sensorData.id
+            }
+          });
+        }
       }
     }
     // Pour les capteurs numériques avec seuil
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
         await prisma.alertLog.create({
           data: {
             sensorId: sensor.id,
-            sensorValue: value,
+            startDataId: sensorData.id,
             thresholdValue: thresholdValue
           }
         });
@@ -124,10 +124,12 @@ export async function POST(request: Request) {
       }
       // Cas où la valeur revient sous le seuil et il existe une alerte active
       else if (value <= thresholdValue && activeAlert) {
-        // Fermer l'alerte active
+        // Mettre à jour l'alerte existante
         await prisma.alertLog.update({
           where: { id: activeAlert.id },
-          data: { endedAt: new Date() }
+          data: {
+            endDataId: sensorData.id
+          }
         });
         console.log(`Alerte terminée pour ${sensor.name}: ${value} <= ${thresholdValue}`);
       }

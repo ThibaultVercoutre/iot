@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SensorType } from '@prisma/client'
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Clock, AlertCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"

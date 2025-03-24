@@ -11,10 +11,12 @@ export async function GET(request: Request) {
     const sensorId = searchParams.get('sensorId');
 
     // Construire la requête de base
-    const whereClause: any = {
+    const whereClause = {
       sensor: {
         userId: 1 // Pour l'instant on utilise l'ID fixe
-      }
+      },
+      sensorId: undefined as number | undefined,
+      endDataId: undefined as number | null | undefined
     };
 
     // Filtrer par capteur si spécifié
@@ -24,7 +26,7 @@ export async function GET(request: Request) {
 
     // Filtrer uniquement les alertes actives si demandé
     if (onlyActive) {
-      whereClause.endData = null;
+      whereClause.endDataId = null;
     }
 
     // Récupérer les logs d'alerte avec les infos du capteur

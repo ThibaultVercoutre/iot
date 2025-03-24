@@ -316,7 +316,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2">
             <AlertCircle className="w-5 h-5" />
             <span className="font-medium">
-              Alerte ! {sensorsInAlert.length} capteur(s) en état d'alerte
+              Alerte ! {sensorsInAlert.length} capteur(s) en état d&apos;alerte
             </span>
           </div>
           <ul className="mt-2 pl-6 list-disc">
@@ -325,7 +325,7 @@ export default function Dashboard() {
                 {sensor.name} - Valeur actuelle: {
                   formatValue(sensor, sensor.historicalData[0]?.value || 0)
                 } {!sensor.isBinary && sensor.threshold && `(Seuil: ${sensor.threshold.value} ${sensor.type === SensorType.SOUND ? 'dB' : ''})`}
-                {sensor.isBinary && "(Détection d'activité)"}
+                {sensor.isBinary && "(Détection d&apos;activité)"}
                 {sensor.activeAlert && (
                   <span className="text-red-600 ml-2">
                     (Alerte depuis {new Date(sensor.activeAlert.startedAt).toLocaleTimeString()})
