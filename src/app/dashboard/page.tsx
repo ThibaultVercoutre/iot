@@ -53,7 +53,8 @@ const sensorColors = {
 
 // Fonction pour formater la date
 const formatDate = (timestamp: string) => {
-  return new Date(timestamp).toLocaleTimeString()
+  const date = new Date(timestamp)
+  return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`
 }
 
 // Fonction pour formater la valeur selon le type
@@ -340,7 +341,7 @@ export default function Dashboard() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {sensors.map((sensor) => {
-          const latestData = sensor.historicalData && sensor.historicalData.length > 0 ? sensor.historicalData[sensor.historicalData.length - 1] : null;
+          const latestData = sensor.historicalData && sensor.historicalData.length > 0 ? sensor.historicalData[0] : null;
           
           return (
             <Card 
@@ -372,7 +373,7 @@ export default function Dashboard() {
                       {formatValue(sensor, latestData.value)}
                     </div>
                     <div className="text-sm text-gray-500">
-                      Dernière mise à jour: {new Date(latestData.timestamp).toLocaleTimeString()}
+                      Dernière mise à jour: {new Date(latestData.timestamp).toLocaleDateString()} {new Date(latestData.timestamp).toLocaleTimeString()}
                     </div>
                   </>
                 ) : (
@@ -380,7 +381,7 @@ export default function Dashboard() {
                 )}
                 {sensor.activeAlert && (
                   <div className="mt-1 text-red-600 text-sm font-medium">
-                    En alerte depuis {new Date(sensor.activeAlert.startedAt).toLocaleTimeString()}
+                    En alerte depuis {new Date(sensor.activeAlert.startedAt).toLocaleDateString()} {new Date(sensor.activeAlert.startedAt).toLocaleTimeString()}
                   </div>
                 )}
                 {!sensor.isBinary && (

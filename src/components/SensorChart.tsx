@@ -42,7 +42,10 @@ export default function SensorChart({ data, label, color }: SensorChartProps) {
     .slice(-50);
 
   const chartData = {
-    labels: sortedData.map(d => new Date(d.timestamp).toLocaleTimeString()),
+    labels: sortedData.map(d => {
+      const date = new Date(d.timestamp);
+      return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`
+    }),
     datasets: [
       {
         label,

@@ -13,9 +13,8 @@ export async function GET() {
       include: {
         data: {
           orderBy: {
-            timestamp: 'desc'
-          },
-          take: 50  // On prend les 50 dernières valeurs pour le graphique
+            timestamp: 'asc'
+          }
         },
         threshold: true,
         // Inclure uniquement les alertes actives (sans date de fin)
