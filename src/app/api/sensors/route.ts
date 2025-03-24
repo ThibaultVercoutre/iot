@@ -20,6 +20,12 @@ export async function GET(request: Request) {
       case 'month':
         startDate.setDate(now.getDate() - 30);
         break;
+      case '12h':
+        startDate.setHours(now.getHours() - 12);
+        break;
+      case '6h':
+        startDate.setHours(now.getHours() - 6);
+        break;
       default: // 'day'
         startDate.setDate(now.getDate() - 1);
     }

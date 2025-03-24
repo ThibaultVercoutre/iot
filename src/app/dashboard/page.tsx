@@ -166,7 +166,7 @@ export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [thresholdValues, setThresholdValues] = useState<{ [key: number]: string }>({})
-  const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month'>('day')
+  const [selectedPeriod, setSelectedPeriod] = useState<'6h' | '12h' | 'day' | 'week' | 'month'>('day')
   const [selectedType, setSelectedType] = useState<SensorType | 'all'>('all')
   const [alertFilter, setAlertFilter] = useState<'all' | 'alert'>('all')
 
@@ -365,11 +365,13 @@ export default function Dashboard() {
         <div className="flex gap-4">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            <Select value={selectedPeriod} onValueChange={(value: 'day' | 'week' | 'month') => setSelectedPeriod(value)}>
+            <Select value={selectedPeriod} onValueChange={(value: '6h' | '12h' | 'day' | 'week' | 'month') => setSelectedPeriod(value)}>
               <SelectTrigger className="w-[120px]">
                 <SelectValue placeholder="Période" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="6h">6h</SelectItem>
+                <SelectItem value="12h">12h</SelectItem>
                 <SelectItem value="day">24h</SelectItem>
                 <SelectItem value="week">7 jours</SelectItem>
                 <SelectItem value="month">30 jours</SelectItem>
