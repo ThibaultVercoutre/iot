@@ -23,9 +23,12 @@ interface Threshold {
   sensorId: number
 }
 
+// Mise à jour de l'interface pour inclure le nouveau champ isBinary
 interface SensorWithData extends Sensor {
   historicalData: SensorData[]
   threshold?: Threshold
+  isInAlert?: boolean
+  isBinary: boolean
 }
 
 interface User {
@@ -46,15 +49,16 @@ const formatDate = (timestamp: string) => {
 }
 
 // Fonction pour formater la valeur selon le type
-const formatValue = (type: SensorType, value: number) => {
-  switch (type) {
-    case SensorType.SOUND:
-      return `${value} dB`
-    case SensorType.VIBRATION:
-    case SensorType.BUTTON:
-      return value === 1 ? 'ON' : 'OFF'
-    default:
-      return value.toString()
+const formatValue = (sensor: SensorWithData, value: number) => {
+  if (sensor.isBinary) {
+    return value === 1 ? 'ON' : 'OFF'
+  } else {
+    switch (sensor.type) {
+      case SensorType.SOUND:
+        return `${value} dB`
+      default:
+        return value.toString()
+    }
   }
 }
 
@@ -64,9 +68,14 @@ const getSensorColor = (type: SensorType) => {
 }
 
 // Composant pour le graphique d'un capteur
-function SensorChartComponent({ data, name, type, threshold }: { data: SensorData[], name: string, type: SensorType, threshold?: Threshold }) {
-  const color = sensorColors[type]
-  const isBinary = type === SensorType.BUTTON || type === SensorType.VIBRATION
+function SensorChartComponent({ sensor, data, name, threshold }: { 
+  sensor: SensorWithData, 
+  data: SensorData[], 
+  name: string, 
+  threshold?: Threshold 
+}) {
+  const color = sensorColors[sensor.type]
+  const isBinary = sensor.isBinary
   
   // S'assurer que data est un tableau et le trier
   const sortedData = Array.isArray(data) 
@@ -95,7 +104,7 @@ function SensorChartComponent({ data, name, type, threshold }: { data: SensorDat
               if (name === "Seuil") {
                 return [`${value} dB`, "Seuil"]
               }
-              return [formatValue(type, value), name]
+              return [formatValue(sensor, value), name]
             }}
             contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
           />
@@ -131,6 +140,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [thresholdValues, setThresholdValues] = useState<{ [key: number]: string }>({})
   const [user, setUser] = useState<User | null>(null)
+  const [sensorsInAlert, setSensorsInAlert] = useState<SensorWithData[]>([])
 
   useEffect(() => {
     const verifyAuth = async () => {
@@ -180,9 +190,40 @@ export default function Dashboard() {
           userResponse.json()
         ])
 
-        setSensors(sensorsData)
-        setUser(userData)
-        setIsLoading(false)
+        // Vérifier les capteurs qui dépassent leur seuil
+        const sensorsWithAlertStatus = sensorsData.map((sensor: SensorWithData) => {
+          const latestData = sensor.historicalData && sensor.historicalData.length > 0 
+            ? sensor.historicalData[0] 
+            : null;
+          
+          let isInAlert = false;
+          
+          if (latestData) {
+            // Cas des capteurs numériques avec seuil
+            if (!sensor.isBinary && sensor.threshold) {
+              isInAlert = latestData.value > sensor.threshold.value;
+            }
+            
+            // Cas des capteurs binaires
+            if (sensor.isBinary) {
+              isInAlert = latestData.value === 1; // valeur 1 = ON
+            }
+          }
+          
+          return {
+            ...sensor,
+            isInAlert
+          };
+        });
+
+        setSensors(sensorsWithAlertStatus);
+        
+        // Filtrer les capteurs en alerte
+        const alertSensors = sensorsWithAlertStatus.filter((s: SensorWithData) => s.isInAlert);
+        setSensorsInAlert(alertSensors);
+        
+        setUser(userData);
+        setIsLoading(false);
       } catch (error) {
         console.error('Erreur lors de la récupération des données:', error)
         setIsLoading(false)
@@ -223,10 +264,38 @@ export default function Dashboard() {
 
       // Mettre à jour l'état local
       setSensors(prevSensors => 
-        prevSensors.map(sensor => 
-          sensor.id === sensorId 
-            ? { ...sensor, threshold: { id: 0, value: numValue, sensorId } }
-            : sensor
+        prevSensors.map(sensor => {
+          if (sensor.id === sensorId) {
+            let isInAlert = false;
+            
+            if (sensor.historicalData && sensor.historicalData.length > 0) {
+              const latestValue = sensor.historicalData[0].value;
+              
+              // Pour les capteurs numériques avec seuil
+              if (!sensor.isBinary) {
+                isInAlert = latestValue > numValue;
+              }
+              
+              // Pour les capteurs binaires
+              if (sensor.isBinary) {
+                isInAlert = latestValue === 1;
+              }
+            }
+            
+            return { 
+              ...sensor, 
+              threshold: { id: 0, value: numValue, sensorId },
+              isInAlert
+            };
+          }
+          return sensor;
+        })
+      )
+      
+      // Mettre à jour la liste des capteurs en alerte
+      setSensorsInAlert(prevSensors => 
+        prevSensors.filter((s: SensorWithData) => s.id !== sensorId).concat(
+          sensors.find(s => s.id === sensorId && s.isInAlert) ? [sensors.find(s => s.id === sensorId)!] : []
         )
       )
     } catch (error) {
@@ -257,26 +326,61 @@ export default function Dashboard() {
         </div>
       )}
       
+      {user && user.alertsEnabled && sensorsInAlert.length > 0 && (
+        <div className="mb-6 p-4 rounded-lg bg-red-100 text-red-800 border border-red-200">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5" />
+            <span className="font-medium">
+              Alerte ! {sensorsInAlert.length} capteur(s) en état d'alerte
+            </span>
+          </div>
+          <ul className="mt-2 pl-6 list-disc">
+            {sensorsInAlert.map(sensor => (
+              <li key={sensor.id}>
+                {sensor.name} - Valeur actuelle: {
+                  formatValue(sensor, sensor.historicalData[0]?.value || 0)
+                } {!sensor.isBinary && sensor.threshold && `(Seuil: ${sensor.threshold.value} ${sensor.type === SensorType.SOUND ? 'dB' : ''})`}
+                {sensor.isBinary && "(Détection d'activité)"}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      
       <h1 className="text-2xl font-bold mb-6">Tableau de bord des capteurs</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        {sensors.filter(sensor => sensor.type !== SensorType.BUTTON).map((sensor) => {
-          const latestData = sensor.historicalData && sensor.historicalData.length > 0 ? sensor.historicalData[sensor.historicalData.length - 1] : null
-          const isBinary = sensor.type === SensorType.BUTTON || sensor.type === SensorType.VIBRATION
+        {sensors.map((sensor) => {
+          const latestData = sensor.historicalData && sensor.historicalData.length > 0 ? sensor.historicalData[0] : null;
           
           return (
-            <Card key={sensor.id} className="overflow-hidden">
-              <CardHeader>
+            <Card 
+              key={sensor.id} 
+              className={`overflow-hidden ${
+                user?.alertsEnabled && sensor.isInAlert 
+                  ? 'border-2 border-red-500 shadow-lg shadow-red-100' 
+                  : ''
+              }`}
+            >
+              <CardHeader className={user?.alertsEnabled && sensor.isInAlert ? 'bg-red-50' : ''}>
                 <CardTitle className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full bg-current text-${sensor.type.toLowerCase()}`} />
                   {sensor.name}
+                  {user?.alertsEnabled && sensor.isInAlert && (
+                    <AlertCircle className="w-5 h-5 ml-auto text-red-500" />
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {latestData ? (
                   <>
-                    <div className="text-4xl font-bold mb-2" style={{ color: getSensorColor(sensor.type) }}>
-                      {formatValue(sensor.type, latestData.value)}
+                    <div 
+                      className={`text-4xl font-bold mb-2 ${
+                        user?.alertsEnabled && sensor.isInAlert ? 'text-red-500' : ''
+                      }`} 
+                      style={{ color: user?.alertsEnabled && sensor.isInAlert ? undefined : getSensorColor(sensor.type) }}
+                    >
+                      {formatValue(sensor, latestData.value)}
                     </div>
                     <div className="text-sm text-gray-500">
                       Dernière mise à jour: {new Date(latestData.timestamp).toLocaleTimeString()}
@@ -285,7 +389,7 @@ export default function Dashboard() {
                 ) : (
                   <div className="text-gray-500">Aucune donnée disponible</div>
                 )}
-                {!isBinary && (
+                {!sensor.isBinary && (
                   <div className="flex items-center gap-2 mt-2">
                     <Label htmlFor={`threshold-${sensor.id}`} className="flex items-center gap-1">
                       <AlertCircle className="w-4 h-4" />
@@ -315,9 +419,9 @@ export default function Dashboard() {
                   </div>
                 )}
                 <SensorChartComponent 
+                  sensor={sensor}
                   data={sensor.historicalData}
                   name={sensor.name}
-                  type={sensor.type}
                   threshold={sensor.threshold}
                 />
               </CardContent>

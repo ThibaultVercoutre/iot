@@ -36,21 +36,24 @@ async function main() {
       deviceId: "sound-simulate",
       joinEui: "1212121212121212",
       devEui: "70B3D57ED006F3C6",
-      threshold: 1500 // Seuil par défaut pour le capteur de son
+      threshold: 1500, // Seuil par défaut pour le capteur de son
+      isBinary: false
     },
     {
       name: "Capteur de vibration",
       type: SensorType.VIBRATION,
       deviceId: "vibration-simulate",
       joinEui: "3434343434343434",
-      devEui: "70B3D57ED006F47D"
+      devEui: "70B3D57ED006F47D",
+      isBinary: true
     },
     {
       name: "Bouton d'alerte",
       type: SensorType.BUTTON,
       deviceId: "button-simulate",
       joinEui: "5656565656565656",
-      devEui: "70B3D57ED006F47F"
+      devEui: "70B3D57ED006F47F",
+      isBinary: true
     }
   ]
 
@@ -69,11 +72,13 @@ async function main() {
       update: {
         name: sensorType.name,
         type: sensorType.type,
+        isBinary: sensorType.isBinary,
         userId: 1
       },
       create: {
         name: sensorType.name,
         type: sensorType.type,
+        isBinary: sensorType.isBinary,
         deviceId: sensorType.deviceId,
         joinEui: sensorType.joinEui,
         devEui: sensorType.devEui,

@@ -63,6 +63,24 @@ export async function POST(request: Request) {
       }
     });
 
+    console.log(`Donnée enregistrée pour le capteur ${sensor.name}: ${value} (${sensor.isBinary ? 'binaire' : 'numérique'})`);
+
+    // Vérifier si c'est un capteur binaire et s'il est en alerte (valeur = 1)
+    if (sensor.isBinary && value === 1) {
+      console.log(`Alerte détectée pour le capteur binaire ${sensor.name}`);
+    }
+
+    // Si c'est un capteur numérique avec un seuil défini, vérifier s'il dépasse le seuil
+    if (!sensor.isBinary) {
+      const threshold = await prisma.threshold.findUnique({
+        where: { sensorId: sensor.id }
+      });
+
+      if (threshold && value > threshold.value) {
+        console.log(`Alerte seuil dépassé pour ${sensor.name}: ${value} > ${threshold.value}`);
+      }
+    }
+
     // Si c'est le capteur d'alerte et qu'il a reçu une valeur de 1
     const user = await prisma.user.findFirst({
       where: {
