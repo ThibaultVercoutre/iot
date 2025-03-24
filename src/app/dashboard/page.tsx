@@ -201,23 +201,31 @@ export default function Dashboard() {
 
   const handleThresholdChange = async (sensorId: number, value: string) => {
     try {
+      // Vérifier que la valeur est un nombre valide
+      const numValue = parseFloat(value)
+      if (isNaN(numValue)) {
+        console.error('Valeur de seuil invalide')
+        return
+      }
+      
       const response = await fetch(`/api/sensors/${sensorId}/threshold`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ value: parseFloat(value) }),
+        body: JSON.stringify({ value: numValue }),
       })
 
       if (!response.ok) {
-        throw new Error('Erreur lors de la mise à jour du seuil')
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.error || 'Erreur lors de la mise à jour du seuil')
       }
 
       // Mettre à jour l'état local
       setSensors(prevSensors => 
         prevSensors.map(sensor => 
           sensor.id === sensorId 
-            ? { ...sensor, threshold: { id: 0, value: parseFloat(value), sensorId } }
+            ? { ...sensor, threshold: { id: 0, value: numValue, sensorId } }
             : sensor
         )
       )
