@@ -87,13 +87,26 @@ export async function POST(request: Request) {
     if (sensor.isBinary) {
       // Pour les capteurs binaires, on crée une alerte à chaque fois qu'on reçoit 1
       if (value === 1) {
-        await prisma.alertLog.create({
-          data: {
-            sensorId: sensor.id,
-            startDataId: sensorData.id,
-            thresholdValue: 1
-          }
-        });
+        // Si c'est le capteur d'alerte (bouton), on met la même date de début et de fin
+        if (user?.alertSensorId === sensor.id) {
+          await prisma.alertLog.create({
+            data: {
+              sensorId: sensor.id,
+              startDataId: sensorData.id,
+              endDataId: sensorData.id, // Même ID pour début et fin
+              thresholdValue: 1
+            }
+          });
+        } else {
+          // Pour les autres capteurs binaires, comportement normal
+          await prisma.alertLog.create({
+            data: {
+              sensorId: sensor.id,
+              startDataId: sensorData.id,
+              thresholdValue: 1
+            }
+          });
+        }
       } else {
         // Si on reçoit 0, on termine l'alerte active si elle existe
         if (activeAlert) {

@@ -43,7 +43,7 @@ export async function GET() {
         value: data.value,
         timestamp: data.timestamp.toISOString(),
         sensorId: data.sensorId
-      })),
+      })).reverse(), // Inverser l'ordre pour avoir les plus anciennes en premier
       // Ajouter l'information concernant l'alerte active
       activeAlert: sensor.alertLogs.length > 0 ? {
         id: sensor.alertLogs[0].id,

@@ -89,7 +89,6 @@ function SensorChartComponent({ sensor, data, name, threshold }: {
   const sortedData = Array.isArray(data) 
     ? [...data]
         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-        .slice(-50)
     : []
   
   return (
@@ -341,7 +340,7 @@ export default function Dashboard() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {sensors.map((sensor) => {
-          const latestData = sensor.historicalData && sensor.historicalData.length > 0 ? sensor.historicalData[0] : null;
+          const latestData = sensor.historicalData && sensor.historicalData.length > 0 ? sensor.historicalData[sensor.historicalData.length - 1] : null;
           
           return (
             <Card 
