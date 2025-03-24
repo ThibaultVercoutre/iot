@@ -16,21 +16,20 @@ export async function GET() {
             timestamp: 'desc'
           },
           take: 50  // On prend les 50 dernières valeurs pour le graphique
-        }
+        },
+        threshold: true
       }
     });
 
-    // Formater les données pour le front
+    // S'assurer que les données sont bien formatées
     const formattedSensors = sensors.map(sensor => ({
-      id: sensor.id,
-      name: sensor.name,
-      type: sensor.type,
-      lastValue: sensor.data[0]?.value ?? 0,
-      lastUpdate: sensor.data[0]?.timestamp ?? null,
+      ...sensor,
       historicalData: sensor.data.map(data => ({
+        id: data.id,
         value: data.value,
-        timestamp: data.timestamp
-      })).reverse() // Pour avoir les données dans l'ordre chronologique
+        timestamp: data.timestamp.toISOString(),
+        sensorId: data.sensorId
+      }))
     }));
 
     return NextResponse.json(formattedSensors);

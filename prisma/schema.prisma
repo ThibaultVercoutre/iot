@@ -14,6 +14,8 @@ model User {
   name      String?
   ttnId     String?  // Identifiant TTN de l'utilisateur
   sensors   Sensor[] // Relation avec les capteurs
+  alertSensorId Int? // ID du capteur qui contrôle les alertes (bouton)
+  alertsEnabled Boolean @default(true) // État des alertes
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -28,6 +30,7 @@ model Sensor {
   userId    Int         // Clé étrangère vers User
   user      User        @relation(fields: [userId], references: [id])
   data      SensorData[] // Relation avec les données
+  threshold Threshold?  // Relation avec le seuil
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
@@ -47,6 +50,17 @@ model SensorData {
 
   @@index([sensorId])
   @@index([timestamp])
+}
+
+model Threshold {
+  id        Int      @id @default(autoincrement())
+  value     Float    // Valeur du seuil
+  sensorId  Int      @unique // Clé étrangère vers Sensor (relation 1:1)
+  sensor    Sensor   @relation(fields: [sensorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sensorId])
 }
 
 enum SensorType {

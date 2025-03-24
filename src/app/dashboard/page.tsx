@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { SensorType, Sensor } from '@prisma/client'
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { AlertCircle } from "lucide-react"
 
 // Types pour les données des capteurs
 interface SensorData {
@@ -14,8 +17,20 @@ interface SensorData {
   sensorId: number
 }
 
+interface Threshold {
+  id: number
+  value: number
+  sensorId: number
+}
+
 interface SensorWithData extends Sensor {
   historicalData: SensorData[]
+  threshold?: Threshold
+}
+
+interface User {
+  id: number
+  alertsEnabled: boolean
 }
 
 // Configuration des couleurs par type de capteur
@@ -49,14 +64,16 @@ const getSensorColor = (type: SensorType) => {
 }
 
 // Composant pour le graphique d'un capteur
-function SensorChartComponent({ data, name, type }: { data: SensorData[], name: string, type: SensorType }) {
+function SensorChartComponent({ data, name, type, threshold }: { data: SensorData[], name: string, type: SensorType, threshold?: Threshold }) {
   const color = sensorColors[type]
   const isBinary = type === SensorType.BUTTON || type === SensorType.VIBRATION
   
-  // Trier les données par date et garder les 50 dernières
-  const sortedData = [...data]
-    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-    .slice(-50)
+  // S'assurer que data est un tableau et le trier
+  const sortedData = Array.isArray(data) 
+    ? [...data]
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+        .slice(-50)
+    : []
   
   return (
     <div className="h-[200px]">
@@ -74,16 +91,34 @@ function SensorChartComponent({ data, name, type }: { data: SensorData[], name: 
           />
           <Tooltip 
             labelFormatter={formatDate}
-            formatter={(value: number) => [formatValue(type, value), name]}
+            formatter={(value: number, name: string) => {
+              if (name === "Seuil") {
+                return [`${value} dB`, "Seuil"]
+              }
+              return [formatValue(type, value), name]
+            }}
             contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
           />
           <Line 
-            type={isBinary ? 'stepAfter' : 'monotone'}
+            type="monotone"
             dataKey="value" 
             stroke={color} 
             strokeWidth={2}
-            dot={!isBinary}
+            dot={false}
+            name={`${name}`}
           />
+          {threshold && !isBinary && (
+            <Line
+              type="monotone"
+              dataKey={() => threshold.value}
+              stroke={color}
+              strokeDasharray="5 5"
+              strokeWidth={1.5}
+              dot={false}
+              name="Seuil"
+              opacity={0.7}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -94,6 +129,8 @@ export default function Dashboard() {
   const router = useRouter()
   const [sensors, setSensors] = useState<SensorWithData[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [thresholdValues, setThresholdValues] = useState<{ [key: number]: string }>({})
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
     const verifyAuth = async () => {
@@ -128,13 +165,23 @@ export default function Dashboard() {
   }, [router])
 
   useEffect(() => {
-    const fetchSensorData = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/sensors')
-        if (!response.ok) throw new Error('Erreur lors de la récupération des données')
-        const data = await response.json()
-        // console.log('Données reçues:', data)
-        setSensors(data)
+        const [sensorsResponse, userResponse] = await Promise.all([
+          fetch('/api/sensors'),
+          fetch('/api/user')
+        ])
+
+        if (!sensorsResponse.ok) throw new Error('Erreur lors de la récupération des données des capteurs')
+        if (!userResponse.ok) throw new Error('Erreur lors de la récupération des données utilisateur')
+
+        const [sensorsData, userData] = await Promise.all([
+          sensorsResponse.json(),
+          userResponse.json()
+        ])
+
+        setSensors(sensorsData)
+        setUser(userData)
         setIsLoading(false)
       } catch (error) {
         console.error('Erreur lors de la récupération des données:', error)
@@ -143,14 +190,41 @@ export default function Dashboard() {
     }
 
     // Récupérer les données immédiatement
-    fetchSensorData()
+    fetchData()
 
-    // Mettre en place l'intervalle pour les mises à jour (toutes les 5 secondes)
-    const interval = setInterval(fetchSensorData, 5000)
+    // Mettre en place l'intervalle pour les mises à jour
+    const interval = setInterval(fetchData, 1000)
 
     // Nettoyer l'intervalle lors du démontage du composant
     return () => clearInterval(interval)
   }, [])
+
+  const handleThresholdChange = async (sensorId: number, value: string) => {
+    try {
+      const response = await fetch(`/api/sensors/${sensorId}/threshold`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ value: parseFloat(value) }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la mise à jour du seuil')
+      }
+
+      // Mettre à jour l'état local
+      setSensors(prevSensors => 
+        prevSensors.map(sensor => 
+          sensor.id === sensorId 
+            ? { ...sensor, threshold: { id: 0, value: parseFloat(value), sensorId } }
+            : sensor
+        )
+      )
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du seuil:', error)
+    }
+  }
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen">Chargement...</div>
@@ -158,11 +232,30 @@ export default function Dashboard() {
 
   return (
     <div className="container mx-auto p-4">
+      {user && (
+        <div className={`mb-6 p-4 rounded-lg ${
+          user.alertsEnabled 
+            ? 'bg-green-100 text-green-800 border border-green-200' 
+            : 'bg-orange-100 text-orange-800 border border-orange-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5" />
+            <span className="font-medium">
+              {user.alertsEnabled 
+                ? 'Les alertes sont actives' 
+                : 'Les alertes sont suspendues'}
+            </span>
+          </div>
+        </div>
+      )}
+      
       <h1 className="text-2xl font-bold mb-6">Tableau de bord des capteurs</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        {sensors.map((sensor) => {
+        {sensors.filter(sensor => sensor.type !== SensorType.BUTTON).map((sensor) => {
           const latestData = sensor.historicalData && sensor.historicalData.length > 0 ? sensor.historicalData[sensor.historicalData.length - 1] : null
+          const isBinary = sensor.type === SensorType.BUTTON || sensor.type === SensorType.VIBRATION
+          
           return (
             <Card key={sensor.id} className="overflow-hidden">
               <CardHeader>
@@ -184,10 +277,40 @@ export default function Dashboard() {
                 ) : (
                   <div className="text-gray-500">Aucune donnée disponible</div>
                 )}
+                {!isBinary && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Label htmlFor={`threshold-${sensor.id}`} className="flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      Seuil
+                    </Label>
+                    <Input
+                      id={`threshold-${sensor.id}`}
+                      type="number"
+                      value={thresholdValues[sensor.id] ?? sensor.threshold?.value ?? ''}
+                      onChange={(e) => {
+                        setThresholdValues(prev => ({ ...prev, [sensor.id]: e.target.value }))
+                      }}
+                      onBlur={(e) => {
+                        if (e.target.value) {
+                          handleThresholdChange(sensor.id, e.target.value)
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.currentTarget.blur()
+                        }
+                      }}
+                      className="w-24"
+                      min="0"
+                      step="0.1"
+                    />
+                  </div>
+                )}
                 <SensorChartComponent 
                   data={sensor.historicalData}
                   name={sensor.name}
                   type={sensor.type}
+                  threshold={sensor.threshold}
                 />
               </CardContent>
             </Card>

@@ -63,6 +63,24 @@ export async function POST(request: Request) {
       }
     });
 
+    // Si c'est le capteur d'alerte et qu'il a reçu une valeur de 1
+    const user = await prisma.user.findFirst({
+      where: {
+        alertSensorId: sensor.id
+      }
+    });
+
+    if (user && value === 1) {
+      // Inverser l'état des alertes
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          alertsEnabled: !user.alertsEnabled
+        }
+      });
+      console.log(`État des alertes mis à jour pour l'utilisateur ${user.id}: ${!user.alertsEnabled}`);
+    }
+
     return NextResponse.json({ 
       message: 'Donnée enregistrée avec succès',
       sensorData 

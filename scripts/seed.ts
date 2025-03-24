@@ -11,16 +11,18 @@ async function main() {
     where: { id: 1 },
     update: {
       email: "test@example.com",
-      ttnId: "iot-project-dashboard", // Mettre à jour avec l'application_id TTN
+      ttnId: "iot-project-dashboard",
       password: hashedPassword,
-      name: "Test User"
+      name: "Test User",
+      alertsEnabled: true
     },
     create: {
       id: 1,
       email: "test@example.com",
       password: hashedPassword,
       name: "Test User",
-      ttnId: "iot-project-dashboard" // L'application_id de votre application TTN
+      ttnId: "iot-project-dashboard",
+      alertsEnabled: true
     },
   })
 
@@ -33,7 +35,8 @@ async function main() {
       type: SensorType.SOUND,
       deviceId: "sound-simulate",
       joinEui: "1212121212121212",
-      devEui: "70B3D57ED006F3C6"
+      devEui: "70B3D57ED006F3C6",
+      threshold: 1500 // Seuil par défaut pour le capteur de son
     },
     {
       name: "Capteur de vibration",
@@ -43,13 +46,15 @@ async function main() {
       devEui: "70B3D57ED006F47D"
     },
     {
-      name: "Bouton",
+      name: "Bouton d'alerte",
       type: SensorType.BUTTON,
       deviceId: "button-simulate",
       joinEui: "5656565656565656",
       devEui: "70B3D57ED006F47F"
     }
   ]
+
+  let alertSensorId: number | null = null
 
   // Créer ou mettre à jour chaque capteur
   for (const sensorType of sensorTypes) {
@@ -78,6 +83,24 @@ async function main() {
 
     console.log(`Capteur créé: ${sensor.name} (${sensor.type})`)
 
+    // Stocker l'ID du capteur bouton
+    if (sensorType.type === SensorType.BUTTON) {
+      alertSensorId = sensor.id
+    }
+
+    // Créer le seuil pour le capteur de son si nécessaire
+    if (sensorType.type === SensorType.SOUND && sensorType.threshold) {
+      await prisma.threshold.upsert({
+        where: { sensorId: sensor.id },
+        update: { value: sensorType.threshold },
+        create: {
+          sensorId: sensor.id,
+          value: sensorType.threshold
+        }
+      })
+      console.log(`Seuil créé pour ${sensor.name}: ${sensorType.threshold}`)
+    }
+
     // Générer 50 valeurs de test espacées d'une minute
     const startDate = new Date('2025-03-22T00:41:29.522Z')
     const values = []
@@ -92,9 +115,12 @@ async function main() {
           value = 1500 + Math.sin(i * 0.2) * 100 + (Math.random() * 20 - 10)
           break
         case SensorType.VIBRATION:
-        case SensorType.BUTTON:
           // Alterne entre 0 et 1 avec une tendance à rester dans le même état
           value = i % 10 < 7 ? 0 : 1 // 70% du temps à 0, 30% à 1
+          break
+        case SensorType.BUTTON:
+          // Pour le bouton, on génère des valeurs qui simulent des appuis
+          value = i % 20 === 0 ? 1 : 0 // Un appui toutes les 20 minutes
           break
         default:
           value = 0
@@ -114,6 +140,15 @@ async function main() {
     })
 
     console.log(`${values.length} valeurs créées pour ${sensor.name}`)
+  }
+
+  // Mettre à jour l'utilisateur avec l'ID du capteur d'alerte
+  if (alertSensorId) {
+    await prisma.user.update({
+      where: { id: 1 },
+      data: { alertSensorId }
+    })
+    console.log(`Capteur d'alerte configuré: ${alertSensorId}`)
   }
 }
 
