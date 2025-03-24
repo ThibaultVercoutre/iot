@@ -197,7 +197,12 @@ export default function AlertsHistory() {
                       {alert.endedAt ? formatDateTime(alert.endedAt) : "En cours"}
                     </TableCell>
                     <TableCell>
-                      {alert.duration ? (
+                      {alert.startedAt === alert.endedAt ? (
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          Alerte ponctuelle
+                        </div>
+                      ) : alert.duration ? (
                         <div className="flex items-center gap-1">
                           <Clock className="h-4 w-4" />
                           {formatDuration(alert.duration)}
