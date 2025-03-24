@@ -8,12 +8,18 @@ const thresholdSchema = z.object({
   value: z.number().min(0)
 })
 
+type Props = {
+  params: {
+    id: string
+  }
+}
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  props: Props
 ) {
   try {
-    const sensorId = parseInt(params.id)
+    const sensorId = parseInt(props.params.id)
     
     const threshold = await prisma.threshold.findUnique({
       where: { sensorId }
@@ -31,10 +37,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  props: Props
 ) {
   try {
-    const sensorId = parseInt(params.id)
+    const sensorId = parseInt(props.params.id)
     const body = await request.json()
     const { value } = thresholdSchema.parse(body)
 
@@ -69,10 +75,10 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  props: Props
 ) {
   try {
-    const sensorId = parseInt(params.id)
+    const sensorId = parseInt(props.params.id)
     
     await prisma.threshold.delete({
       where: { sensorId }
