@@ -65,8 +65,9 @@ async function main() {
   const sensorIds: Record<SensorType, number> = {} as Record<SensorType, number>
 
   // Heure de référence actuelle pour toutes les données créées
-  // Fixons l'heure à 21:30:29 pour correspondre à la capture d'écran
   const now = new Date();
+  // On recule d'un jour
+  now.setDate(now.getDate() - 1);
   now.setHours(21, 30, 29, 0);
 
   // Créer ou mettre à jour chaque capteur
