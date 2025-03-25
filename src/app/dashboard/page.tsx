@@ -350,7 +350,7 @@ export default function Dashboard() {
                 {sensor.isBinary && "(Détection d&apos;activité)"}
                 {sensor.activeAlert && (
                   <span className="text-red-600 ml-2">
-                    (Alerte depuis {new Date(sensor.activeAlert.startedAt).toLocaleTimeString()})
+                    (Alerte depuis {new Date(sensor.activeAlert.startedAt).toLocaleDateString()} {new Date(sensor.activeAlert.startedAt).toLocaleTimeString()})
                   </span>
                 )}
               </li>
