@@ -48,7 +48,7 @@ model SensorData {
   value     Int
   timestamp DateTime @default(now())
   sensorId  Int
-  sensor    Sensor   @relation(fields: [sensorId], references: [id])
+  sensor    Sensor   @relation(fields: [sensorId], references: [id], onDelete: Cascade)
   alertLogsStart AlertLog[] @relation("AlertStartData") // Alertes démarrées par cette donnée
   alertLogsEnd   AlertLog[] @relation("AlertEndData")   // Alertes terminées par cette donnée
 
@@ -60,7 +60,7 @@ model Threshold {
   id        Int      @id @default(autoincrement())
   value     Float    // Valeur du seuil
   sensorId  Int      @unique // Clé étrangère vers Sensor (relation 1:1)
-  sensor    Sensor   @relation(fields: [sensorId], references: [id])
+  sensor    Sensor   @relation(fields: [sensorId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -74,9 +74,9 @@ model AlertLog {
   endDataId   Int?      // ID de la donnée qui a terminé l'alerte (null si l'alerte est toujours active)
   thresholdValue Float?  // Valeur du seuil au moment de l'alerte (pour les capteurs numériques)
   sensorId    Int       // Clé étrangère vers Sensor
-  sensor      Sensor    @relation(fields: [sensorId], references: [id])
-  startData   SensorData @relation("AlertStartData", fields: [startDataId], references: [id])
-  endData     SensorData? @relation("AlertEndData", fields: [endDataId], references: [id])
+  sensor      Sensor    @relation(fields: [sensorId], references: [id], onDelete: Cascade)
+  startData   SensorData @relation("AlertStartData", fields: [startDataId], references: [id], onDelete: Cascade)
+  endData     SensorData? @relation("AlertEndData", fields: [endDataId], references: [id], onDelete: SetNull)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
