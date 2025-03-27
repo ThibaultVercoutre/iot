@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { SensorType, Sensor } from '@prisma/client'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,6 +18,7 @@ import {
 } from "@/components/ui/select"
 import { AddSensorDialog } from "@/components/AddSensorDialog"
 import { AddDeviceDialog } from "@/components/AddDeviceDialog"
+import SensorChart from "@/components/SensorChart"
 import {
   Dialog,
   DialogContent,
@@ -100,72 +100,6 @@ const getSensorColor = (type: SensorType) => {
   return sensorColors[type]
 }
 
-// Composant pour le graphique d'un capteur
-function SensorChartComponent({ sensor, data, name, threshold }: { 
-  sensor: SensorWithData, 
-  data: SensorData[], 
-  name: string, 
-  threshold?: Threshold 
-}) {
-  const color = sensorColors[sensor.type]
-  const isBinary = sensor.isBinary
-  
-  // S'assurer que data est un tableau et le trier
-  const sortedData = Array.isArray(data) 
-    ? [...data]
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-    : []
-  
-  return (
-    <div className="h-[200px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={sortedData}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis 
-            dataKey="timestamp" 
-            tickFormatter={formatDate}
-            tick={{ fontSize: 12 }}
-          />
-          <YAxis 
-            domain={isBinary ? [0, 1] : ['auto', 'auto']}
-            tick={{ fontSize: 12 }}
-          />
-          <Tooltip 
-            labelFormatter={formatDate}
-            formatter={(value: number, name: string) => {
-              if (name === "Seuil") {
-                return [`${value} dB`, "Seuil"]
-              }
-              return [formatValue(sensor, value), name]
-            }}
-            contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
-          />
-          <Line 
-            type="monotone"
-            dataKey="value" 
-            stroke={color} 
-            strokeWidth={2}
-            dot={false}
-            name={`${name}`}
-          />
-          {threshold && !isBinary && (
-            <Line
-              type="monotone"
-              dataKey={() => threshold.value}
-              stroke={color}
-              strokeDasharray="5 5"
-              strokeWidth={1.5}
-              dot={false}
-              name="Seuil"
-              opacity={0.7}
-            />
-          )}
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  )
-}
-
 export default function Dashboard() {
   const router = useRouter()
   const [devices, setDevices] = useState<Device[]>([])
@@ -233,6 +167,11 @@ export default function Dashboard() {
           })
         ])
 
+        console.log('Réponses API:', {
+          devicesStatus: devicesResponse.status,
+          userStatus: userResponse.status
+        });
+
         if (!devicesResponse.ok) throw new Error('Erreur lors de la récupération des devices')
         if (!userResponse.ok) throw new Error('Erreur lors de la récupération des données utilisateur')
 
@@ -240,6 +179,11 @@ export default function Dashboard() {
           devicesResponse.json(),
           userResponse.json()
         ])
+
+        console.log('Données reçues:', {
+          devices: devicesData,
+          user: userData
+        });
 
         // Récupérer les capteurs pour chaque device
         const devicesWithSensors = await Promise.all(
@@ -739,11 +683,24 @@ export default function Dashboard() {
                                 />
                               </div>
                             )}
-                            <SensorChartComponent 
-                              sensor={sensor}
+                            {/* Log avant le rendu */}
+                            {(() => {
+                              console.log('Données du capteur:', {
+                                name: sensor.name,
+                                historicalData: sensor.historicalData,
+                                type: sensor.type
+                              });
+                              return null;
+                            })()}
+                            <SensorChart 
                               data={sensor.historicalData}
-                              name={sensor.name}
-                              threshold={sensor.threshold}
+                              label={sensor.name}
+                              color={sensorColors[sensor.type]}
+                              timeRange={selectedPeriod === 'week' ? 168 : // 7 jours * 24h
+                                       selectedPeriod === 'month' ? 720 : // 30 jours * 24h
+                                       selectedPeriod === '12h' ? 12 :
+                                       selectedPeriod === '6h' ? 6 : 24} // 24h par défaut
+                              threshold={sensor.threshold?.value}
                             />
                           </>
                         ) : (

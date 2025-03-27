@@ -3,24 +3,26 @@
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
-  CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  CategoryScale,
   Title,
   Tooltip,
   Legend,
   TooltipItem,
 } from 'chart.js';
+import annotationPlugin from 'chartjs-plugin-annotation';
 
 ChartJS.register(
-  CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  CategoryScale,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  annotationPlugin
 );
 
 interface SensorData {
@@ -34,35 +36,45 @@ interface SensorChartProps {
   data: SensorData[];
   label: string;
   color: string;
+  timeRange?: number;
+  threshold?: number;
 }
 
-export default function SensorChart({ data, label, color }: SensorChartProps) {
-  // Trier les données par timestamp et prendre les 50 dernières valeurs
-  const sortedData = [...data]
-    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-    .slice(-50);
+export default function SensorChart({ data, label, color, timeRange = 24, threshold }: SensorChartProps) {
+  if (data.length === 0) {
+    return (
+      <div className="w-full h-[200px] flex items-center justify-center text-gray-500">
+        Aucune donnée disponible
+      </div>
+    );
+  }
 
-  const chartData = {
-    labels: sortedData.map(d => {
-      const date = new Date(d.timestamp);
-      return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-    }),
-    datasets: [
-      {
-        label,
-        data: sortedData.map(d => d.value),
-        borderColor: color,
-        backgroundColor: color,
-        showLine: false, // Désactive la ligne entre les points
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      },
-    ],
-  };
+  // Calculer l'heure la plus récente pour l'origine
+  const latestTime = new Date(Math.max(...data.map(d => new Date(d.timestamp).getTime())));
+  const oldestAllowedTime = new Date(latestTime.getTime() - (timeRange * 60 * 60 * 1000));
+
+  // Récupérer la date la plus ancienne
+  const oldestTime = new Date(Math.min(...data.map(d => new Date(d.timestamp).getTime())));
+
+  // Récupérer la date de maintenant
+  const currentTime = new Date();
+  
+  // Calculer et arrondir xMin à l'heure supérieure
+  const xMin = Math.ceil((oldestTime.getTime() - currentTime.getTime()) / (1000 * 60 * 60)) - 1;
+  const xMax = Math.ceil((latestTime.getTime() - currentTime.getTime()) / (1000 * 60 * 60));
+
+  // Filtrer et trier les données dans la plage temporelle
+  const sortedData = [...data]
+    .filter(d => new Date(d.timestamp) >= oldestAllowedTime)
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
   const options = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      intersect: false,
+      mode: 'index' as const
+    },
     plugins: {
       legend: {
         display: false,
@@ -71,41 +83,110 @@ export default function SensorChart({ data, label, color }: SensorChartProps) {
         display: false,
       },
       tooltip: {
+        mode: 'index' as const,
+        intersect: false,
         callbacks: {
-          title: (context: TooltipItem<'line'>[]) => {
-            const date = new Date(sortedData[context[0].dataIndex].timestamp);
-            return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+          title: (context: any) => {
+            const date = new Date(currentTime.getTime() + context[0].parsed.x * 1000 * 60 * 60);
+            return date.toLocaleString();
+          },
+          label: (context: any) => {
+            const lines = [
+              `${label} : ${context.parsed.y} dB`,
+            ];
+            if (threshold) {
+              lines.push(`Seuil : ${threshold} dB`);
+            }
+            return lines;
+          }
+        },
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        titleColor: '#000',
+        bodyColor: '#000',
+        borderColor: color,
+        borderWidth: 1,
+        padding: 10,
+        displayColors: false
+      },
+      annotation: threshold ? {
+        annotations: {
+          line1: {
+            type: 'line' as const,
+            yMin: threshold,
+            yMax: threshold,
+            borderColor: color,
+            borderWidth: 2,
+            borderDash: [5, 5]
           }
         }
-      }
+      } : undefined
     },
     scales: {
       x: {
-        display: true,
-        grid: {
-          display: false,
-        },
+        type: 'linear' as const,
+        position: 'bottom' as const,
+        min: xMin,
+        max: xMax,
         ticks: {
-          maxRotation: 45,
-          minRotation: 45,
-          autoSkip: true,
-          maxTicksLimit: 10
+          stepSize: timeRange <= 24 ? 1 : Math.ceil(timeRange / 12),
+          callback: function(tickValue: string | number) {
+            const value = Math.round(Number(tickValue));
+            return value === 0 ? 'maintenant' : `${value}h`;
+          }
+        },
+        grid: {
+          color: 'rgba(0, 0, 0, 0.1)',
         }
       },
       y: {
+        type: 'linear' as const,
         display: true,
         grid: {
           color: 'rgba(0, 0, 0, 0.1)',
         },
+        min: (() => {
+          const minValue = Math.min(...sortedData.map(d => d.value));
+          const range = Math.max(...sortedData.map(d => d.value)) - minValue;
+          return Math.max(0, minValue - range * 0.1);
+        })(),
+        max: (() => {
+          const maxValue = Math.max(...sortedData.map(d => d.value));
+          const range = maxValue - Math.min(...sortedData.map(d => d.value));
+          return maxValue + range * 0.1;
+        })(),
+        ticks: {
+          stepSize: (() => {
+            const range = Math.max(...sortedData.map(d => d.value)) - Math.min(...sortedData.map(d => d.value));
+            return Math.ceil(range / 10);
+          })()
+        }
       },
     },
   };
 
+  const chartData = {
+    datasets: [{
+      label,
+      data: sortedData.map(d => ({
+        x: (new Date(d.timestamp).getTime() - currentTime.getTime()) / (1000 * 60 * 60),
+        y: d.value
+      })),
+      backgroundColor: color,
+      borderColor: color,
+      pointStyle: 'circle',
+      pointRadius: 2,
+      pointHoverRadius: 5,
+      pointHoverBackgroundColor: color,
+      pointHoverBorderColor: color,
+      borderWidth: 2,
+      tension: 0.4,
+      fill: false
+    }]
+  };
+
   return (
-    <div className="w-full h-[200px] overflow-x-auto">
-      <div className="min-w-[800px] h-full">
-        <Line data={chartData} options={options} />
-      </div>
+    <div className="h-[200px]">
+      <Line data={chartData} options={options} />
     </div>
   );
 } 
