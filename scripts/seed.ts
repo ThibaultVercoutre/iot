@@ -25,7 +25,8 @@ async function main() {
       email: "test@example.com",
       password: hashedPassword,
       name: "Test User",
-      alertsEnabled: true
+      alertsEnabled: true,
+      ttnId: "iot-project-dashboard",
     },
   })
 
@@ -311,6 +312,14 @@ async function createAlerts(sensorIds: Record<SensorType, number>) {
     })
     console.log(`Alerte créée pour capteur ${createdAlert.sensorId}`)
   }
+
+  // Ajouter à l'user l'id du capteur bouton
+  await prisma.user.update({
+    where: { id: 1 },
+    data: {
+      alertSensorId: sensorIds[SensorType.BUTTON]
+    }
+  })
   
   console.log(`${allAlerts.length} alertes créées`)
 }
