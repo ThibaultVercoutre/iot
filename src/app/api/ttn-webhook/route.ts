@@ -3,6 +3,19 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// Fonction pour parser la date TTN
+function parseTTNDate(dateString: string): Date {
+  // Supprimer les nanosecondes (tout ce qui est après les millisecondes)
+  const simplifiedDate = dateString.replace(/\.\d{6,}Z$/, 'Z');
+  const date = new Date(simplifiedDate);
+  
+  if (isNaN(date.getTime())) {
+    throw new Error(`Date invalide: ${dateString}`);
+  }
+  
+  return date;
+}
+
 interface TTNPayload {
   end_device_ids: {
     device_id: string;
@@ -78,7 +91,7 @@ export async function POST(request: Request) {
         data: {
           value: Number(value),
           sensorId: sensor.id,
-          timestamp: new Date(data.uplink_message.received_at)
+          timestamp: parseTTNDate(data.uplink_message.received_at)
         }
       });
 
