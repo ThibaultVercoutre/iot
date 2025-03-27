@@ -55,12 +55,12 @@ interface SensorWithData extends Sensor {
   threshold?: Threshold
   isInAlert?: boolean
   isBinary: boolean
-  activeAlert?: {
+  alertLogs: {
     id: number
-    startedAt: string
-    sensorValue: number
-    thresholdValue: number | null
-  } | null
+    startDataId: number
+    createdAt: string
+    startData: SensorData
+  }[]
 }
 
 interface User {
@@ -98,6 +98,23 @@ const formatValue = (sensor: SensorWithData, value: number) => {
 // Fonction pour obtenir la couleur selon le type de capteur
 const getSensorColor = (type: SensorType) => {
   return sensorColors[type]
+}
+
+// Fonction pour formater la durée écoulée
+const formatElapsedTime = (startDate: string) => {
+  const start = new Date(startDate)
+  const now = new Date()
+  const diffSeconds = Math.floor((now.getTime() - start.getTime()) / 1000)
+  
+  if (diffSeconds < 60) {
+    return `${diffSeconds} seconde${diffSeconds > 1 ? 's' : ''}`
+  }
+  if (diffSeconds < 3600) {
+    const minutes = Math.floor(diffSeconds / 60)
+    return `${minutes} minute${minutes > 1 ? 's' : ''}`
+  }
+  const hours = Math.floor(diffSeconds / 3600)
+  return `${hours} heure${hours > 1 ? 's' : ''}`
 }
 
 // Composant pour le graphique d'un capteur
@@ -257,19 +274,9 @@ export default function Dashboard() {
 
             // Vérifier les capteurs qui ont une alerte active
             const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
-              const latestData = sensor.historicalData[0];
-              let isInAlert = false;
-
-              if (latestData) {
-                if (sensor.isBinary) {
-                  // Pour les capteurs binaires, en alerte si valeur = 1
-                  isInAlert = latestData.value === 1;
-                } else if (sensor.threshold) {
-                  // Pour les capteurs numériques, en alerte si au-dessus du seuil
-                  isInAlert = latestData.value >= sensor.threshold.value;
-                }
-              }
-
+              // Un capteur est en alerte s'il a des alertLogs sans endDataId
+              const isInAlert = sensor.alertLogs.length > 0;
+              
               return {
                 ...sensor,
                 isInAlert
@@ -468,9 +475,9 @@ export default function Dashboard() {
                 {`${sensor.name} - Valeur actuelle: ${formatValue(sensor, sensor.historicalData[0]?.value || 0)}`}
                 {!sensor.isBinary && sensor.threshold && ` (Seuil: ${sensor.threshold.value} ${sensor.type === SensorType.SOUND ? 'dB' : ''})`}
                 {sensor.isBinary && ' (Détection d\'activité)'}
-                {sensor.activeAlert && (
+                {sensor.alertLogs[0] && (
                   <span className="text-red-600 ml-2">
-                    {`(Alerte depuis ${new Date(sensor.activeAlert.startedAt).toLocaleDateString()} ${new Date(sensor.activeAlert.startedAt).toLocaleTimeString()})`}
+                    {`(En alerte depuis ${formatElapsedTime(sensor.alertLogs[0].createdAt)} - Valeur déclenchement: ${formatValue(sensor, sensor.alertLogs[0].startData.value)})`}
                   </span>
                 )}
               </li>
@@ -715,11 +722,6 @@ export default function Dashboard() {
                             <div className="text-sm text-gray-500 mb-4">
                               Dernière mise à jour: {new Date(latestData.timestamp).toLocaleDateString()} {new Date(latestData.timestamp).toLocaleTimeString()}
                             </div>
-                            {sensor.activeAlert && (
-                              <div className="mt-1 text-red-600 text-sm font-medium mb-4">
-                                En alerte depuis {new Date(sensor.activeAlert.startedAt).toLocaleDateString()} {new Date(sensor.activeAlert.startedAt).toLocaleTimeString()}
-                              </div>
-                            )}
                             {!sensor.isBinary && (
                               <div className="flex items-center gap-2 mb-4">
                                 <Label htmlFor={`threshold-${sensor.id}`} className="flex items-center gap-1">

@@ -85,6 +85,9 @@ export async function GET(request: Request) {
           where: {
             endDataId: null,
           },
+          include: {
+            startData: true
+          }
         },
       },
     });
