@@ -25,7 +25,8 @@ async function main() {
       email: "test@example.com",
       password: hashedPassword,
       name: "Test User",
-      alertsEnabled: true
+      alertsEnabled: true,
+      ttnId: "iot-project-dashboard",
     },
   })
 
