@@ -465,13 +465,12 @@ export default function Dashboard() {
           <ul className="mt-2 pl-6 list-disc">
             {sensorsInAlert.map(sensor => (
               <li key={sensor.id}>
-                {sensor.name} - Valeur actuelle: {
-                  formatValue(sensor, sensor.historicalData[0]?.value || 0)
-                } {!sensor.isBinary && sensor.threshold && `(Seuil: ${sensor.threshold.value} ${sensor.type === SensorType.SOUND ? 'dB' : ''})`}
-                {sensor.isBinary && "(Détection d&apos;activité)"}
+                {`${sensor.name} - Valeur actuelle: ${formatValue(sensor, sensor.historicalData[0]?.value || 0)}`}
+                {!sensor.isBinary && sensor.threshold && ` (Seuil: ${sensor.threshold.value} ${sensor.type === SensorType.SOUND ? 'dB' : ''})`}
+                {sensor.isBinary && ' (Détection d\'activité)'}
                 {sensor.activeAlert && (
                   <span className="text-red-600 ml-2">
-                    (Alerte depuis {new Date(sensor.activeAlert.startedAt).toLocaleDateString()} {new Date(sensor.activeAlert.startedAt).toLocaleTimeString()})
+                    {`(Alerte depuis ${new Date(sensor.activeAlert.startedAt).toLocaleDateString()} ${new Date(sensor.activeAlert.startedAt).toLocaleTimeString()})`}
                   </span>
                 )}
               </li>
