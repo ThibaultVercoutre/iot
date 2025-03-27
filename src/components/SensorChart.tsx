@@ -41,51 +41,32 @@ export default function SensorChart({ data, label, color }: SensorChartProps) {
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     .slice(-50);
 
-  // Créer un tableau de timestamps réguliers
+  // Créer une échelle de temps régulière
   const timestamps = sortedData.map(d => new Date(d.timestamp).getTime());
   const minTime = Math.min(...timestamps);
   const maxTime = Math.max(...timestamps);
-  const timeStep = (maxTime - minTime) / (sortedData.length - 1);
-  
-  // Créer un tableau de timestamps réguliers
-  const regularTimestamps = Array.from(
-    { length: sortedData.length },
-    (_, i) => minTime + i * timeStep
-  );
-
-  // Associer les valeurs aux timestamps réguliers
-  const normalizedData = regularTimestamps.map(timestamp => {
-    // Trouver l'index le plus proche dans les données triées
-    const index = sortedData.findIndex(d => 
-      new Date(d.timestamp).getTime() > timestamp
-    );
-    
-    if (index === -1) return sortedData[sortedData.length - 1].value;
-    if (index === 0) return sortedData[0].value;
-    
-    // Interpolation linéaire entre les deux points les plus proches
-    const prevData = sortedData[index - 1];
-    const nextData = sortedData[index];
-    const prevTime = new Date(prevData.timestamp).getTime();
-    const nextTime = new Date(nextData.timestamp).getTime();
-    
-    const ratio = (timestamp - prevTime) / (nextTime - prevTime);
-    return prevData.value + (nextData.value - prevData.value) * ratio;
-  });
+  const timeStep = (maxTime - minTime) / 49; // 50 points au total
+  const regularTimes = Array.from({ length: 50 }, (_, i) => minTime + i * timeStep);
 
   const chartData = {
-    labels: regularTimestamps.map(t => {
+    labels: regularTimes.map(t => {
       const date = new Date(t);
       return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
     }),
     datasets: [
       {
         label,
-        data: normalizedData,
+        data: regularTimes.map(t => {
+          const closestData = sortedData.find(d => 
+            Math.abs(new Date(d.timestamp).getTime() - t) < timeStep / 2
+          );
+          return closestData ? closestData.value : null;
+        }),
         borderColor: color,
         backgroundColor: color,
-        tension: 0.1,
-        spanGaps: true, // Permet de tracer des lignes entre les points même avec des valeurs nulles
+        tension: 0,
+        pointRadius: 4,
+        pointHoverRadius: 6,
       },
     ],
   };
@@ -107,6 +88,10 @@ export default function SensorChart({ data, label, color }: SensorChartProps) {
         grid: {
           display: false,
         },
+        ticks: {
+          maxRotation: 45,
+          minRotation: 45,
+        }
       },
       y: {
         display: true,
