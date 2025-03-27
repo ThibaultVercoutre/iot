@@ -424,8 +424,8 @@ export default function Dashboard() {
   return (
     <div className="container mx-auto p-4">
       {user && (
-        <div className="flex items-center justify-between mb-6">
-          <div className={`p-4 rounded-lg flex-1 ${
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
+          <div className={`p-4 rounded-lg w-full sm:flex-1 ${
             user.alertsEnabled 
               ? 'bg-green-100 text-green-800 border border-green-200' 
               : 'bg-orange-100 text-orange-800 border border-orange-200'
@@ -440,8 +440,8 @@ export default function Dashboard() {
             </div>
           </div>
           
-          <Link href="/dashboard/alerts" className="ml-4">
-            <Button>
+          <Link href="/dashboard/alerts" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto">
               <History className="mr-2 h-4 w-4" />
               Historique des alertes
             </Button>
@@ -474,10 +474,10 @@ export default function Dashboard() {
         </div>
       )}
       
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Tableau de bord des capteurs</h1>
         
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4 w-full sm:w-auto">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4" />
             <Select value={selectedPeriod} onValueChange={(value: '6h' | '12h' | 'day' | 'week' | 'month') => setSelectedPeriod(value)}>
@@ -528,7 +528,7 @@ export default function Dashboard() {
               <CardTitle className="text-xl mb-4">{device.name}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {device.sensors.map((sensor) => {
                   const latestData = sensor.historicalData && sensor.historicalData.length > 0 ? sensor.historicalData[0] : null;
                   

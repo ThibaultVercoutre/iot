@@ -119,8 +119,7 @@ export default function AlertsHistory() {
           throw new Error("Pas de token")
         }
 
-        const query = showOnlyActive ? '?active=true' : ''
-        const response = await fetch(`/api/alerts${query}`, {
+        const response = await fetch(`/api/alerts`, {
           headers: {
             "Authorization": `Bearer ${token}`
           }
@@ -131,7 +130,7 @@ export default function AlertsHistory() {
         }
         
         const data = await response.json()
-        setAlertLogs(data)
+        setAlertLogs(showOnlyActive ? data.filter((alert: AlertLog) => alert.isActive) : data)
         setIsLoading(false)
       } catch (error) {
         console.error("Erreur lors de la récupération des alertes :", error)
@@ -153,9 +152,9 @@ export default function AlertsHistory() {
 
   return (
     <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.push('/dashboard')}>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+          <Button variant="outline" onClick={() => router.push('/dashboard')} className="w-full sm:w-auto">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Retour au tableau de bord
           </Button>
@@ -164,6 +163,7 @@ export default function AlertsHistory() {
         <Button 
           variant={showOnlyActive ? "default" : "outline"} 
           onClick={() => setShowOnlyActive(!showOnlyActive)}
+          className="w-full sm:w-auto"
         >
           <AlertCircle className="mr-2 h-4 w-4" />
           {showOnlyActive ? "Alertes actives uniquement" : "Toutes les alertes"}
