@@ -547,13 +547,18 @@ export default function Dashboard() {
                       }`}
                     >
                       <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: getSensorColor(sensor.type) }}
-                          />
-                          {sensor.name}
-                          <div className="flex items-center gap-2 ml-auto">
+                        <CardTitle>
+                          <div className="flex items-center gap-2 mb-2">
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: getSensorColor(sensor.type) }}
+                            />
+                            {sensor.name}
+                            {user?.alertsEnabled && sensor.isInAlert && (
+                              <AlertCircle className="w-5 h-5 text-red-500 ml-auto" />
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-sm">
                               <span className="font-mono">{sensor.uniqueId}</span>
                               <Button
@@ -570,9 +575,6 @@ export default function Dashboard() {
                                 <span className="sr-only">Copier l&apos;ID</span>
                               </Button>
                             </div>
-                            {user?.alertsEnabled && sensor.isInAlert && (
-                              <AlertCircle className="w-5 h-5 text-red-500" />
-                            )}
                             <Dialog>
                               <DialogTrigger asChild>
                                 <Button 
