@@ -10,6 +10,8 @@ import {
   Title,
   Tooltip,
   Legend,
+  TooltipItem,
+  ChartTypeRegistry
 } from 'chart.js';
 
 ChartJS.register(
@@ -71,7 +73,7 @@ export default function SensorChart({ data, label, color }: SensorChartProps) {
       },
       tooltip: {
         callbacks: {
-          title: (context: any) => {
+          title: (context: TooltipItem<'line'>[]) => {
             const date = new Date(sortedData[context[0].dataIndex].timestamp);
             return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
           }
