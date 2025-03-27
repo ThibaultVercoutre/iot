@@ -5,15 +5,24 @@ const prisma = new PrismaClient();
 
 // Fonction pour parser la date TTN
 function parseTTNDate(dateString: string): Date {
-  // Supprimer les nanosecondes (tout ce qui est après les millisecondes)
-  const simplifiedDate = dateString.replace(/\.\d{6,}Z$/, 'Z');
-  const date = new Date(simplifiedDate);
-  
-  if (isNaN(date.getTime())) {
-    throw new Error(`Date invalide: ${dateString}`);
+  if (!dateString) {
+    return new Date(); // Utiliser la date actuelle si pas de date fournie
   }
-  
-  return date;
+
+  try {
+    // Supprimer les nanosecondes (tout ce qui est après les millisecondes)
+    const simplifiedDate = dateString.replace(/\.\d{6,}Z$/, 'Z');
+    const date = new Date(simplifiedDate);
+    
+    if (isNaN(date.getTime())) {
+      return new Date(); // Utiliser la date actuelle si la date est invalide
+    }
+    
+    return date;
+  } catch (error) {
+    console.warn(`Erreur lors du parsing de la date: ${dateString}`, error);
+    return new Date(); // Utiliser la date actuelle en cas d'erreur
+  }
 }
 
 interface TTNPayload {
@@ -86,12 +95,16 @@ export async function POST(request: Request) {
         continue;
       }
 
+      const timestamp = data.uplink_message?.received_at 
+        ? parseTTNDate(data.uplink_message.received_at)
+        : new Date();
+
       // Créer l'entrée dans la base de données
       const sensorData = await prisma.sensorData.create({
         data: {
           value: Number(value),
           sensorId: sensor.id,
-          timestamp: parseTTNDate(data.uplink_message.received_at)
+          timestamp
         }
       });
 
