@@ -257,7 +257,19 @@ export default function Dashboard() {
 
             // Vérifier les capteurs qui ont une alerte active
             const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
-              const isInAlert = sensor.activeAlert !== null;
+              const latestData = sensor.historicalData[0];
+              let isInAlert = false;
+
+              if (latestData) {
+                if (sensor.isBinary) {
+                  // Pour les capteurs binaires, en alerte si valeur = 1
+                  isInAlert = latestData.value === 1;
+                } else if (sensor.threshold) {
+                  // Pour les capteurs numériques, en alerte si au-dessus du seuil
+                  isInAlert = latestData.value >= sensor.threshold.value;
+                }
+              }
+
               return {
                 ...sensor,
                 isInAlert
@@ -351,7 +363,19 @@ export default function Dashboard() {
 
             // Vérifier les capteurs qui ont une alerte active
             const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
-              const isInAlert = sensor.activeAlert !== null;
+              const latestData = sensor.historicalData[0];
+              let isInAlert = false;
+
+              if (latestData) {
+                if (sensor.isBinary) {
+                  // Pour les capteurs binaires, en alerte si valeur = 1
+                  isInAlert = latestData.value === 1;
+                } else if (sensor.threshold) {
+                  // Pour les capteurs numériques, en alerte si au-dessus du seuil
+                  isInAlert = latestData.value >= sensor.threshold.value;
+                }
+              }
+
               return {
                 ...sensor,
                 isInAlert
@@ -625,7 +649,19 @@ export default function Dashboard() {
 
                                               // Vérifier les capteurs qui ont une alerte active
                                               const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
-                                                const isInAlert = sensor.activeAlert !== null;
+                                                const latestData = sensor.historicalData[0];
+                                                let isInAlert = false;
+
+                                                if (latestData) {
+                                                  if (sensor.isBinary) {
+                                                    // Pour les capteurs binaires, en alerte si valeur = 1
+                                                    isInAlert = latestData.value === 1;
+                                                  } else if (sensor.threshold) {
+                                                    // Pour les capteurs numériques, en alerte si au-dessus du seuil
+                                                    isInAlert = latestData.value >= sensor.threshold.value;
+                                                  }
+                                                }
+
                                                 return {
                                                   ...sensor,
                                                   isInAlert
@@ -761,7 +797,19 @@ export default function Dashboard() {
 
                             // Vérifier les capteurs qui ont une alerte active
                             const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
-                              const isInAlert = sensor.activeAlert !== null;
+                              const latestData = sensor.historicalData[0];
+                              let isInAlert = false;
+
+                              if (latestData) {
+                                if (sensor.isBinary) {
+                                  // Pour les capteurs binaires, en alerte si valeur = 1
+                                  isInAlert = latestData.value === 1;
+                                } else if (sensor.threshold) {
+                                  // Pour les capteurs numériques, en alerte si au-dessus du seuil
+                                  isInAlert = latestData.value >= sensor.threshold.value;
+                                }
+                              }
+
                               return {
                                 ...sensor,
                                 isInAlert
@@ -828,7 +876,19 @@ export default function Dashboard() {
 
                     // Vérifier les capteurs qui ont une alerte active
                     const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
-                      const isInAlert = sensor.activeAlert !== null;
+                      const latestData = sensor.historicalData[0];
+                      let isInAlert = false;
+
+                      if (latestData) {
+                        if (sensor.isBinary) {
+                          // Pour les capteurs binaires, en alerte si valeur = 1
+                          isInAlert = latestData.value === 1;
+                        } else if (sensor.threshold) {
+                          // Pour les capteurs numériques, en alerte si au-dessus du seuil
+                          isInAlert = latestData.value >= sensor.threshold.value;
+                        }
+                      }
+
                       return {
                         ...sensor,
                         isInAlert

@@ -122,6 +122,19 @@ export async function POST(request: Request) {
 
       const alertsEnabled = user.alertsEnabled ?? true;
 
+      // Si c'est le capteur qui contrôle les alertes (bouton)
+      if (user.alertSensorId === sensor.id) {
+        // Si le bouton est pressé (valeur = 1), inverser l'état des alertes
+        if (value === 1) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { alertsEnabled: !alertsEnabled }
+          });
+          console.log(`État des alertes mis à jour pour l'utilisateur ${user.id}: ${!alertsEnabled}`);
+          continue; // Pas besoin de créer une alerte pour le bouton lui-même
+        }
+      }
+
       // Vérifier s'il existe une alerte active pour ce capteur
       const activeAlert = await prisma.alertLog.findFirst({
         where: {
