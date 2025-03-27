@@ -21,28 +21,6 @@ interface TTNPayload {
   };
 }
 
-function decodeUplink(bytes: number[]) {
-  // Vérifier que le payload contient au moins 4 octets
-  if (bytes.length < 4) {
-    return {
-      errors: ["Payload incomplet: doit avoir au moins 4 octets"]
-    };
-  }
-
-  // Décoder les valeurs
-  const data = {
-    "BG3022IN": bytes[0],          // Vibration (0 ou 1)
-    "OYUTA1K6": bytes[1],          // Bouton (0 ou 1)
-    "RWWSZ5RT": (bytes[2] << 8) + bytes[3]  // Son (2 octets)
-  };
-
-  return {
-    data,
-    warnings: [],
-    errors: []
-  };
-}
-
 export async function POST(request: Request) {
   try {
     const data: TTNPayload = await request.json();
@@ -79,28 +57,15 @@ export async function POST(request: Request) {
       }, { status: 404 });
     }
 
-    // Convertir le payload base64 en tableau d'octets
-    const bytes = Buffer.from(data.uplink_message.frm_payload, 'base64');
-    
-    // Décoder le payload
-    const decoded = decodeUplink([...bytes]);
-    
-    if (decoded.errors && decoded.errors.length > 0) {
+    if (!data.uplink_message.decoded_payload) {
       return NextResponse.json(
-        { error: decoded.errors[0] },
+        { error: "Données décodées manquantes" },
         { status: 400 }
       );
     }
 
-    if (!decoded.data) {
-      return NextResponse.json(
-        { error: "Données décodées invalides" },
-        { status: 400 }
-      );
-    }
-
-    // Traiter chaque valeur dans le payload
-    for (const [sensorUniqueId, value] of Object.entries(decoded.data)) {
+    // Traiter chaque valeur dans le payload décodé
+    for (const [sensorUniqueId, value] of Object.entries(data.uplink_message.decoded_payload)) {
       const sensor = device.sensors.find(s => s.uniqueId === sensorUniqueId);
       
       if (!sensor) {
