@@ -41,30 +41,18 @@ export default function SensorChart({ data, label, color }: SensorChartProps) {
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     .slice(-50);
 
-  // Créer une échelle de temps régulière
-  const timestamps = sortedData.map(d => new Date(d.timestamp).getTime());
-  const minTime = Math.min(...timestamps);
-  const maxTime = Math.max(...timestamps);
-  const timeStep = (maxTime - minTime) / 49; // 50 points au total
-  const regularTimes = Array.from({ length: 50 }, (_, i) => minTime + i * timeStep);
-
   const chartData = {
-    labels: regularTimes.map(t => {
-      const date = new Date(t);
-      return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+    labels: sortedData.map(d => {
+      const date = new Date(d.timestamp);
+      return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
     }),
     datasets: [
       {
         label,
-        data: regularTimes.map(t => {
-          const closestData = sortedData.find(d => 
-            Math.abs(new Date(d.timestamp).getTime() - t) < timeStep / 2
-          );
-          return closestData ? closestData.value : null;
-        }),
+        data: sortedData.map(d => d.value),
         borderColor: color,
         backgroundColor: color,
-        tension: 0,
+        showLine: false, // Désactive la ligne entre les points
         pointRadius: 4,
         pointHoverRadius: 6,
       },
@@ -81,6 +69,14 @@ export default function SensorChart({ data, label, color }: SensorChartProps) {
       title: {
         display: false,
       },
+      tooltip: {
+        callbacks: {
+          title: (context: any) => {
+            const date = new Date(sortedData[context[0].dataIndex].timestamp);
+            return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+          }
+        }
+      }
     },
     scales: {
       x: {
@@ -91,6 +87,8 @@ export default function SensorChart({ data, label, color }: SensorChartProps) {
         ticks: {
           maxRotation: 45,
           minRotation: 45,
+          autoSkip: true,
+          maxTicksLimit: 10
         }
       },
       y: {
