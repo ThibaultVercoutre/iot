@@ -151,11 +151,21 @@ export async function POST(request: Request) {
             data: {
               sensorId: sensor.id,
               startDataId: sensorData.id,
-              endDataId: sensorData.id,
               thresholdValue: 1
             }
           });
           console.log(`Nouvelle alerte créée pour ${sensor.name}: ${value}`);
+        }
+        // Ajouter la gestion de la fin d'alerte quand la valeur revient à 0
+        else if (value === 0 && activeAlert) {
+          // Mettre à jour l'alerte existante
+          await prisma.alertLog.update({
+            where: { id: activeAlert.id },
+            data: {
+              endDataId: sensorData.id
+            }
+          });
+          console.log(`Alerte terminée pour ${sensor.name}: ${value}`);
         }
       }
       // Pour les capteurs numériques avec seuil
