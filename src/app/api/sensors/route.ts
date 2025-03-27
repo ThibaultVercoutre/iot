@@ -88,7 +88,18 @@ export async function GET(request: Request) {
             endDataId: null,
           },
           include: {
-            startData: true
+            startData: {
+              select: {
+                value: true,
+                timestamp: true
+              }
+            },
+            endData: {
+              select: {
+                value: true,
+                timestamp: true
+              }
+            }
           }
         },
       },
