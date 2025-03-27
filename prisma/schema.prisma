@@ -13,34 +13,45 @@ model User {
   password  String
   name      String?
   ttnId     String?  // Identifiant TTN de l'utilisateur
-  sensors   Sensor[] // Relation avec les capteurs
+  devices   Device[] // Relation avec les devices
   alertSensorId Int? // ID du capteur qui contrôle les alertes (bouton)
   alertsEnabled Boolean @default(true) // État des alertes
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-model Sensor {
-  id        Int         @id @default(autoincrement())
-  name      String      // Nom du capteur
-  type      SensorType  // Type de capteur (SOUND, VIBRATION, BUTTON)
-  isBinary  Boolean     @default(false) // Indique si le capteur est binaire (ON/OFF) ou continu
-  deviceId  String      @db.VarChar(50)
-  joinEui   String      @db.VarChar(16)
-  devEui    String      @db.VarChar(16)
-  userId    Int         // Clé étrangère vers User
-  user      User        @relation(fields: [userId], references: [id])
-  data      SensorData[] // Relation avec les données
-  threshold Threshold?  // Relation avec le seuil
-  alertLogs AlertLog[]  // Relation avec les logs d'alertes
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+model Device {
+  id        Int      @id @default(autoincrement())
+  name      String   // Nom du device (ex: test-simulate)
+  joinEui   String   @db.VarChar(16)
+  devEui    String   @db.VarChar(16)
+  userId    Int      // Clé étrangère vers User
+  user      User     @relation(fields: [userId], references: [id])
+  sensors   Sensor[] // Relation avec les capteurs
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([deviceId, joinEui, devEui])
-  @@index([deviceId])
-  @@index([joinEui])
-  @@index([devEui])
+  @@unique([joinEui, devEui])
   @@index([userId])
+}
+
+model Sensor {
+  id          Int       @id @default(autoincrement())
+  name        String
+  type        SensorType
+  uniqueId    String    @unique
+  deviceId    Int
+  joinEui     String    @db.VarChar(16)
+  devEui      String    @db.VarChar(16)
+  isBinary    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  device      Device    @relation(fields: [deviceId], references: [id])
+  historicalData SensorData[]
+  threshold   Threshold?
+  alertLogs   AlertLog[]
+
+  @@unique([deviceId, uniqueId])
 }
 
 model SensorData {

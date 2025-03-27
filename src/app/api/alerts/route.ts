@@ -1,79 +1,98 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import jwt from "jsonwebtoken";
 
 const prisma = new PrismaClient();
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const onlyActive = searchParams.get('active') === 'true';
-    const sensorId = searchParams.get('sensorId');
+    // Récupérer l'utilisateur à partir du token
+    const token = request.headers.get("Authorization")?.split(" ")[1];
+    if (!token) {
+      return NextResponse.json(
+        { error: "Token d'authentification manquant" },
+        { status: 401 }
+      );
+    }
 
-    // Construire la requête de base
-    const whereClause = {
-      sensor: {
-        userId: 1 // Pour l'instant on utilise l'ID fixe
-      },
-      sensorId: undefined as number | undefined,
-      endDataId: undefined as number | null | undefined
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key") as {
+      userId: number;
     };
 
-    // Filtrer par capteur si spécifié
-    if (sensorId) {
-      whereClause.sensorId = parseInt(sensorId);
-    }
+    // Récupérer les devices de l'utilisateur
+    const userDevices = await prisma.device.findMany({
+      where: { userId: decoded.userId },
+      select: { id: true }
+    });
 
-    // Filtrer uniquement les alertes actives si demandé
-    if (onlyActive) {
-      whereClause.endDataId = null;
-    }
+    const deviceIds = userDevices.map(device => device.id);
 
-    // Récupérer les logs d'alerte avec les infos du capteur
-    const alertLogs = await prisma.alertLog.findMany({
-      where: whereClause,
-      orderBy: {
-        startData: {
-          timestamp: 'desc'
-        }
+    // Récupérer les capteurs des devices de l'utilisateur
+    const userSensors = await prisma.sensor.findMany({
+      where: { deviceId: { in: deviceIds } },
+      select: { id: true }
+    });
+
+    const sensorIds = userSensors.map(sensor => sensor.id);
+
+    // Récupérer les alertes des capteurs de l'utilisateur
+    const alerts = await prisma.alertLog.findMany({
+      where: {
+        sensorId: { in: sensorIds }
       },
-      take: limit,
       include: {
         sensor: {
           select: {
-            id: true,
             name: true,
             type: true,
             isBinary: true
           }
         },
-        startData: true,
-        endData: true
+        startData: {
+          select: {
+            value: true,
+            timestamp: true
+          }
+        },
+        endData: {
+          select: {
+            value: true,
+            timestamp: true
+          }
+        }
+      },
+      orderBy: {
+        startData: {
+          timestamp: 'desc'
+        }
       }
     });
 
-    // Formater les données pour la réponse API
-    const formattedAlertLogs = alertLogs.map(log => ({
-      id: log.id,
-      startedAt: log.startData.timestamp.toISOString(),
-      endedAt: log.endData?.timestamp.toISOString() || null,
-      duration: log.endData 
-        ? Math.round((log.endData.timestamp.getTime() - log.startData.timestamp.getTime()) / 1000) 
+    // Formater les données pour correspondre à l'interface AlertLog
+    const formattedAlerts = alerts.map(alert => ({
+      id: alert.id,
+      startedAt: alert.startData.timestamp.toISOString(),
+      endedAt: alert.endData?.timestamp.toISOString() || null,
+      duration: alert.endData 
+        ? Math.round((alert.endData.timestamp.getTime() - alert.startData.timestamp.getTime()) / 1000)
         : null,
-      sensorValue: log.startData.value,
-      thresholdValue: log.thresholdValue,
-      sensor: log.sensor,
-      isActive: log.endData === null
+      sensorValue: alert.startData.value,
+      thresholdValue: alert.thresholdValue,
+      isActive: alert.endData === null,
+      sensor: {
+        id: alert.sensorId,
+        name: alert.sensor.name,
+        type: alert.sensor.type,
+        isBinary: alert.sensor.isBinary
+      }
     }));
 
-    return NextResponse.json(formattedAlertLogs);
+    return NextResponse.json(formattedAlerts);
   } catch (error) {
-    console.error('Erreur lors de la récupération des alertes:', error);
+    console.error("Erreur lors de la récupération des alertes:", error);
     return NextResponse.json(
-      { error: 'Erreur lors de la récupération des alertes' },
+      { error: "Erreur lors de la récupération des alertes" },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 } 

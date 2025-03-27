@@ -7,7 +7,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { SensorType, Sensor } from '@prisma/client'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AlertCircle, History, Filter, Clock, Trash2 } from "lucide-react"
+import { AlertCircle, History, Filter, Clock, Trash2, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import {
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { AddSensorDialog } from "@/components/AddSensorDialog"
+import { AddDeviceDialog } from "@/components/AddDeviceDialog"
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,12 @@ interface Threshold {
   id: number
   value: number
   sensorId: number
+}
+
+interface Device {
+  id: number
+  name: string
+  sensors: SensorWithData[]
 }
 
 // Mise à jour de l'interface pour inclure le nouveau champ isBinary
@@ -161,7 +168,7 @@ function SensorChartComponent({ sensor, data, name, threshold }: {
 
 export default function Dashboard() {
   const router = useRouter()
-  const [sensors, setSensors] = useState<SensorWithData[]>([])
+  const [devices, setDevices] = useState<Device[]>([])
   const [sensorsInAlert, setSensorsInAlert] = useState<SensorWithData[]>([])
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -169,6 +176,7 @@ export default function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<'6h' | '12h' | 'day' | 'week' | 'month'>('day')
   const [selectedType, setSelectedType] = useState<SensorType | 'all'>('all')
   const [alertFilter, setAlertFilter] = useState<'all' | 'alert'>('all')
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     const verifyAuth = async () => {
@@ -205,36 +213,74 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [sensorsResponse, userResponse] = await Promise.all([
-          fetch(`/api/sensors?period=${selectedPeriod}`),
-          fetch('/api/user')
+        const token = document.cookie
+          .split("; ")
+          .find(row => row.startsWith("auth-token="))
+          ?.split("=")[1]
+
+        if (!token) return
+
+        const [devicesResponse, userResponse] = await Promise.all([
+          fetch(`/api/devices`, {
+            headers: {
+              "Authorization": `Bearer ${token}`
+            }
+          }),
+          fetch('/api/user', {
+            headers: {
+              "Authorization": `Bearer ${token}`
+            }
+          })
         ])
 
-        if (!sensorsResponse.ok) throw new Error('Erreur lors de la récupération des données des capteurs')
+        if (!devicesResponse.ok) throw new Error('Erreur lors de la récupération des devices')
         if (!userResponse.ok) throw new Error('Erreur lors de la récupération des données utilisateur')
 
-        const [sensorsData, userData] = await Promise.all([
-          sensorsResponse.json(),
+        const [devicesData, userData] = await Promise.all([
+          devicesResponse.json(),
           userResponse.json()
         ])
 
-        // Vérifier les capteurs qui ont une alerte active
-        const sensorsWithAlertStatus = sensorsData.map((sensor: SensorWithData) => {
-          const isInAlert = sensor.activeAlert !== null;
-          return {
-            ...sensor,
-            isInAlert
-          };
-        });
+        // Récupérer les capteurs pour chaque device
+        const devicesWithSensors = await Promise.all(
+          devicesData.map(async (device: { id: number, name: string }) => {
+            const sensorsResponse = await fetch(`/api/sensors?period=${selectedPeriod}`, {
+              headers: {
+                "Authorization": `Bearer ${token}`
+              }
+            })
 
-        setSensors(sensorsWithAlertStatus);
+            if (!sensorsResponse.ok) throw new Error('Erreur lors de la récupération des capteurs')
+
+            const sensorsData = await sensorsResponse.json()
+            const deviceSensors = sensorsData.filter((sensor: SensorWithData) => sensor.deviceId === device.id)
+
+            // Vérifier les capteurs qui ont une alerte active
+            const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
+              const isInAlert = sensor.activeAlert !== null;
+              return {
+                ...sensor,
+                isInAlert
+              };
+            });
+
+            return {
+              ...device,
+              sensors: sensorsWithAlertStatus
+            }
+          })
+        )
+
+        setDevices(devicesWithSensors)
         
         // Filtrer les capteurs en alerte
-        const alertSensors = sensorsWithAlertStatus.filter((s: SensorWithData) => s.isInAlert);
-        setSensorsInAlert(alertSensors);
+        const alertSensors = devicesWithSensors.flatMap(device => 
+          device.sensors.filter((s: SensorWithData) => s.isInAlert)
+        )
+        setSensorsInAlert(alertSensors)
         
-        setUser(userData);
-        setIsLoading(false);
+        setUser(userData)
+        setIsLoading(false)
       } catch (error) {
         console.error('Erreur lors de la récupération des données:', error)
         setIsLoading(false)
@@ -259,10 +305,18 @@ export default function Dashboard() {
         return
       }
       
+      const token = document.cookie
+        .split("; ")
+        .find(row => row.startsWith("auth-token="))
+        ?.split("=")[1]
+
+      if (!token) return
+
       const response = await fetch(`/api/sensors/${sensorId}/threshold`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ value: numValue }),
       })
@@ -272,34 +326,77 @@ export default function Dashboard() {
         throw new Error(errorData?.error || 'Erreur lors de la mise à jour du seuil')
       }
 
-      const sensorsResponse = await fetch('/api/sensors')
-      if (sensorsResponse.ok) {
-        const sensorsData = await sensorsResponse.json()
+      // Rafraîchir les données
+      const devicesResponse = await fetch('/api/devices', {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+      if (devicesResponse.ok) {
+        const devicesData = await devicesResponse.json()
         
-        const sensorsWithAlertStatus = sensorsData.map((sensor: SensorWithData) => {
-          const isInAlert = sensor.activeAlert !== null;
-          return {
-            ...sensor,
-            isInAlert
-          };
-        });
+        // Récupérer les capteurs pour chaque device
+        const devicesWithSensors = await Promise.all(
+          devicesData.map(async (device: { id: number, name: string }) => {
+            const sensorsResponse = await fetch(`/api/sensors?period=${selectedPeriod}`, {
+              headers: {
+                "Authorization": `Bearer ${token}`
+              }
+            })
 
-        setSensors(sensorsWithAlertStatus);
+            if (!sensorsResponse.ok) throw new Error('Erreur lors de la récupération des capteurs')
+
+            const sensorsData = await sensorsResponse.json()
+            const deviceSensors = sensorsData.filter((sensor: SensorWithData) => sensor.deviceId === device.id)
+
+            // Vérifier les capteurs qui ont une alerte active
+            const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
+              const isInAlert = sensor.activeAlert !== null;
+              return {
+                ...sensor,
+                isInAlert
+              };
+            });
+
+            return {
+              ...device,
+              sensors: sensorsWithAlertStatus
+            }
+          })
+        )
+
+        setDevices(devicesWithSensors)
         
-        const alertSensors = sensorsWithAlertStatus.filter((s: SensorWithData) => s.isInAlert);
-        setSensorsInAlert(alertSensors);
+        // Filtrer les capteurs en alerte
+        const alertSensors = devicesWithSensors.flatMap(device => 
+          device.sensors.filter((s: SensorWithData) => s.isInAlert)
+        )
+        setSensorsInAlert(alertSensors)
       }
     } catch (error) {
       console.error('Erreur lors de la mise à jour du seuil:', error)
     }
   }
 
+  const handleCopyId = async (id: string) => {
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error('Erreur lors de la copie:', err);
+    }
+  };
+
   // Filtrer les capteurs selon les critères
-  const filteredSensors = sensors.filter(sensor => {
-    const typeMatch = selectedType === 'all' || sensor.type === selectedType;
-    const alertMatch = alertFilter === 'all' || (alertFilter === 'alert' && sensor.isInAlert);
-    return typeMatch && alertMatch;
-  });
+  const filteredDevices = devices.map(device => ({
+    ...device,
+    sensors: device.sensors.filter(sensor => {
+      const typeMatch = selectedType === 'all' || sensor.type === selectedType;
+      const alertMatch = alertFilter === 'all' || (alertFilter === 'alert' && sensor.isInAlert);
+      return typeMatch && alertMatch;
+    })
+  })).filter(device => device.sensors.length > 0);
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen">Chargement...</div>
@@ -406,183 +503,353 @@ export default function Dashboard() {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredSensors.map((sensor) => {
-          const latestData = sensor.historicalData && sensor.historicalData.length > 0 ? sensor.historicalData[0] : null;
-          
-          return (
-            <Card 
-              key={sensor.id} 
-              className={`relative ${
-                user?.alertsEnabled && sensor.isInAlert 
-                  ? 'border-2 border-red-500 shadow-lg shadow-red-100' 
-                  : ''
-              }`}
-            >
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: getSensorColor(sensor.type) }}
-                  />
-                  {sensor.name}
-                  <div className="flex items-center gap-2 ml-auto">
-                    {user?.alertsEnabled && sensor.isInAlert && (
-                      <AlertCircle className="w-5 h-5 text-red-500" />
-                    )}
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Supprimer le capteur</span>
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Supprimer le capteur</DialogTitle>
-                          <DialogDescription>
-                            Êtes-vous sûr de vouloir supprimer le capteur &quot;{sensor.name}&quot; ? Cette action supprimera également toutes les données et alertes associées.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter>
-                          <Button
-                            variant="ghost"
-                            onClick={() => {
-                              const closeDialog = document.querySelector(`[data-state="open"]`)?.querySelector('[aria-label="Close"]') as HTMLButtonElement;
-                              if (closeDialog) closeDialog.click();
-                            }}
-                          >
-                            Annuler
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            onClick={async () => {
-                              try {
-                                const response = await fetch(`/api/sensors/${sensor.id}`, {
-                                  method: 'DELETE',
-                                });
-
-                                if (!response.ok) {
-                                  throw new Error('Erreur lors de la suppression du capteur');
-                                }
-
-                                // Rafraîchir les données
-                                const sensorsResponse = await fetch(`/api/sensors?period=${selectedPeriod}`);
-                                if (sensorsResponse.ok) {
-                                  const sensorsData = await sensorsResponse.json();
-                                  const sensorsWithAlertStatus = sensorsData.map((s: SensorWithData) => ({
-                                    ...s,
-                                    isInAlert: s.activeAlert !== null
-                                  }));
-                                  setSensors(sensorsWithAlertStatus);
-                                  const alertSensors = sensorsWithAlertStatus.filter((s: SensorWithData) => s.isInAlert);
-                                  setSensorsInAlert(alertSensors);
-                                }
-
-                                // Fermer le dialogue
-                                const closeDialog = document.querySelector(`[data-state="open"]`)?.querySelector('[aria-label="Close"]') as HTMLButtonElement;
-                                if (closeDialog) closeDialog.click();
-                              } catch (error) {
-                                console.error('Erreur:', error);
-                              }
-                            }}
-                          >
-                            Supprimer
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {latestData ? (
-                  <>
-                    <div 
-                      className={`text-4xl font-bold mb-2 ${
-                        user?.alertsEnabled && sensor.isInAlert ? 'text-red-500' : ''
-                      }`} 
-                      style={{ color: user?.alertsEnabled && sensor.isInAlert ? undefined : getSensorColor(sensor.type) }}
+      <div className="grid grid-cols-1 gap-6">
+        {filteredDevices.map((device) => (
+          <Card key={device.id} className="p-6">
+            <CardHeader>
+              <CardTitle className="text-xl mb-4">{device.name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {device.sensors.map((sensor) => {
+                  const latestData = sensor.historicalData && sensor.historicalData.length > 0 ? sensor.historicalData[0] : null;
+                  
+                  return (
+                    <Card 
+                      key={sensor.id} 
+                      className={`relative ${
+                        user?.alertsEnabled && sensor.isInAlert 
+                          ? 'border-2 border-red-500 shadow-lg shadow-red-100' 
+                          : ''
+                      }`}
                     >
-                      {formatValue(sensor, latestData.value)}
-                    </div>
-                    <div className="text-sm text-gray-500 mb-4">
-                      Dernière mise à jour: {new Date(latestData.timestamp).toLocaleDateString()} {new Date(latestData.timestamp).toLocaleTimeString()}
-                    </div>
-                    {sensor.activeAlert && (
-                      <div className="mt-1 text-red-600 text-sm font-medium mb-4">
-                        En alerte depuis {new Date(sensor.activeAlert.startedAt).toLocaleDateString()} {new Date(sensor.activeAlert.startedAt).toLocaleTimeString()}
-                      </div>
-                    )}
-                    {!sensor.isBinary && (
-                      <div className="flex items-center gap-2 mb-4">
-                        <Label htmlFor={`threshold-${sensor.id}`} className="flex items-center gap-1">
-                          <AlertCircle className="w-4 h-4" />
-                          Seuil
-                        </Label>
-                        <Input
-                          id={`threshold-${sensor.id}`}
-                          type="number"
-                          value={thresholdValues[sensor.id] ?? sensor.threshold?.value ?? ''}
-                          onChange={(e) => {
-                            setThresholdValues(prev => ({ ...prev, [sensor.id]: e.target.value }))
-                          }}
-                          onBlur={(e) => {
-                            if (e.target.value) {
-                              handleThresholdChange(sensor.id, e.target.value)
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: getSensorColor(sensor.type) }}
+                          />
+                          {sensor.name}
+                          <div className="flex items-center gap-2 ml-auto">
+                            <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-sm">
+                              <span className="font-mono">{sensor.uniqueId}</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 p-0"
+                                onClick={() => handleCopyId(sensor.uniqueId)}
+                              >
+                                {copiedId === sensor.uniqueId ? (
+                                  <Check className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <Copy className="h-4 w-4" />
+                                )}
+                                <span className="sr-only">Copier l&apos;ID</span>
+                              </Button>
+                            </div>
+                            {user?.alertsEnabled && sensor.isInAlert && (
+                              <AlertCircle className="w-5 h-5 text-red-500" />
+                            )}
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span className="sr-only">Supprimer le capteur</span>
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Supprimer le capteur</DialogTitle>
+                                  <DialogDescription>
+                                    Êtes-vous sûr de vouloir supprimer le capteur &quot;{sensor.name}&quot; ? Cette action supprimera également toutes les données et alertes associées.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <DialogFooter>
+                                  <Button
+                                    variant="ghost"
+                                    onClick={() => {
+                                      const closeDialog = document.querySelector(`[data-state="open"]`)?.querySelector('[aria-label="Close"]') as HTMLButtonElement;
+                                      if (closeDialog) closeDialog.click();
+                                    }}
+                                  >
+                                    Annuler
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    onClick={async () => {
+                                      try {
+                                        const token = document.cookie
+                                          .split("; ")
+                                          .find(row => row.startsWith("auth-token="))
+                                          ?.split("=")[1]
+
+                                        if (!token) return
+
+                                        const response = await fetch(`/api/sensors/${sensor.id}`, {
+                                          method: 'DELETE',
+                                          headers: {
+                                            "Authorization": `Bearer ${token}`
+                                          }
+                                        });
+
+                                        if (!response.ok) {
+                                          throw new Error('Erreur lors de la suppression du capteur');
+                                        }
+
+                                        // Rafraîchir les données
+                                        const devicesResponse = await fetch('/api/devices', {
+                                          headers: {
+                                            "Authorization": `Bearer ${token}`
+                                          }
+                                        })
+                                        if (devicesResponse.ok) {
+                                          const devicesData = await devicesResponse.json()
+                                          
+                                          // Récupérer les capteurs pour chaque device
+                                          const devicesWithSensors = await Promise.all(
+                                            devicesData.map(async (device: { id: number, name: string }) => {
+                                              const sensorsResponse = await fetch(`/api/sensors?period=${selectedPeriod}`, {
+                                                headers: {
+                                                  "Authorization": `Bearer ${token}`
+                                                }
+                                              })
+
+                                              if (!sensorsResponse.ok) throw new Error('Erreur lors de la récupération des capteurs')
+
+                                              const sensorsData = await sensorsResponse.json()
+                                              const deviceSensors = sensorsData.filter((s: SensorWithData) => s.deviceId === device.id)
+
+                                              // Vérifier les capteurs qui ont une alerte active
+                                              const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
+                                                const isInAlert = sensor.activeAlert !== null;
+                                                return {
+                                                  ...sensor,
+                                                  isInAlert
+                                                };
+                                              });
+
+                                              return {
+                                                ...device,
+                                                sensors: sensorsWithAlertStatus
+                                              }
+                                            })
+                                          )
+
+                                          setDevices(devicesWithSensors)
+                                          
+                                          // Filtrer les capteurs en alerte
+                                          const alertSensors = devicesWithSensors.flatMap(device => 
+                                            device.sensors.filter((s: SensorWithData) => s.isInAlert)
+                                          )
+                                          setSensorsInAlert(alertSensors)
+                                        }
+
+                                        // Fermer le dialogue
+                                        const closeDialog = document.querySelector(`[data-state="open"]`)?.querySelector('[aria-label="Close"]') as HTMLButtonElement;
+                                        if (closeDialog) closeDialog.click();
+                                      } catch (error) {
+                                        console.error('Erreur:', error);
+                                      }
+                                    }}
+                                  >
+                                    Supprimer
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {latestData ? (
+                          <>
+                            <div 
+                              className={`text-4xl font-bold mb-2 ${
+                                user?.alertsEnabled && sensor.isInAlert ? 'text-red-500' : ''
+                              }`} 
+                              style={{ color: user?.alertsEnabled && sensor.isInAlert ? undefined : getSensorColor(sensor.type) }}
+                            >
+                              {formatValue(sensor, latestData.value)}
+                            </div>
+                            <div className="text-sm text-gray-500 mb-4">
+                              Dernière mise à jour: {new Date(latestData.timestamp).toLocaleDateString()} {new Date(latestData.timestamp).toLocaleTimeString()}
+                            </div>
+                            {sensor.activeAlert && (
+                              <div className="mt-1 text-red-600 text-sm font-medium mb-4">
+                                En alerte depuis {new Date(sensor.activeAlert.startedAt).toLocaleDateString()} {new Date(sensor.activeAlert.startedAt).toLocaleTimeString()}
+                              </div>
+                            )}
+                            {!sensor.isBinary && (
+                              <div className="flex items-center gap-2 mb-4">
+                                <Label htmlFor={`threshold-${sensor.id}`} className="flex items-center gap-1">
+                                  <AlertCircle className="w-4 h-4" />
+                                  Seuil
+                                </Label>
+                                <Input
+                                  id={`threshold-${sensor.id}`}
+                                  type="number"
+                                  value={thresholdValues[sensor.id] ?? sensor.threshold?.value ?? ''}
+                                  onChange={(e) => {
+                                    setThresholdValues(prev => ({ ...prev, [sensor.id]: e.target.value }))
+                                  }}
+                                  onBlur={(e) => {
+                                    if (e.target.value) {
+                                      handleThresholdChange(sensor.id, e.target.value)
+                                    }
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.currentTarget.blur()
+                                    }
+                                  }}
+                                  className="w-24"
+                                  min="0"
+                                  step="0.1"
+                                />
+                              </div>
+                            )}
+                            <SensorChartComponent 
+                              sensor={sensor}
+                              data={sensor.historicalData}
+                              name={sensor.name}
+                              threshold={sensor.threshold}
+                            />
+                          </>
+                        ) : (
+                          <div className="text-gray-500">Aucune donnée disponible</div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+                <AddSensorDialog onSensorAdded={() => {
+                  // Rafraîchir les données après l'ajout d'un capteur
+                  const fetchData = async () => {
+                    try {
+                      const token = document.cookie
+                        .split("; ")
+                        .find(row => row.startsWith("auth-token="))
+                        ?.split("=")[1]
+
+                      if (!token) return
+
+                      const devicesResponse = await fetch('/api/devices', {
+                        headers: {
+                          "Authorization": `Bearer ${token}`
+                        }
+                      })
+                      if (devicesResponse.ok) {
+                        const devicesData = await devicesResponse.json()
+                        
+                        // Récupérer les capteurs pour chaque device
+                        const devicesWithSensors = await Promise.all(
+                          devicesData.map(async (device: { id: number, name: string }) => {
+                            const sensorsResponse = await fetch(`/api/sensors?period=${selectedPeriod}`, {
+                              headers: {
+                                "Authorization": `Bearer ${token}`
+                              }
+                            })
+
+                            if (!sensorsResponse.ok) throw new Error('Erreur lors de la récupération des capteurs')
+
+                            const sensorsData = await sensorsResponse.json()
+                            const deviceSensors = sensorsData.filter((sensor: SensorWithData) => sensor.deviceId === device.id)
+
+                            // Vérifier les capteurs qui ont une alerte active
+                            const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
+                              const isInAlert = sensor.activeAlert !== null;
+                              return {
+                                ...sensor,
+                                isInAlert
+                              };
+                            });
+
+                            return {
+                              ...device,
+                              sensors: sensorsWithAlertStatus
                             }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.currentTarget.blur()
-                            }
-                          }}
-                          className="w-24"
-                          min="0"
-                          step="0.1"
-                        />
-                      </div>
-                    )}
-                    <SensorChartComponent 
-                      sensor={sensor}
-                      data={sensor.historicalData}
-                      name={sensor.name}
-                      threshold={sensor.threshold}
-                    />
-                  </>
-                ) : (
-                  <div className="text-gray-500">Aucune donnée disponible</div>
-                )}
-              </CardContent>
-            </Card>
-          )
-        })}
-        <AddSensorDialog onSensorAdded={() => {
-          // Rafraîchir les données après l'ajout d'un capteur
+                          })
+                        )
+
+                        setDevices(devicesWithSensors)
+                        
+                        // Filtrer les capteurs en alerte
+                        const alertSensors = devicesWithSensors.flatMap(device => 
+                          device.sensors.filter((s: SensorWithData) => s.isInAlert)
+                        )
+                        setSensorsInAlert(alertSensors)
+                      }
+                    } catch (error) {
+                      console.error('Erreur lors de la récupération des données:', error)
+                    }
+                  }
+                  fetchData()
+                }} />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        <AddDeviceDialog onDeviceAdded={() => {
+          // Rafraîchir les données après l'ajout d'un device
           const fetchData = async () => {
             try {
-              const sensorsResponse = await fetch(`/api/sensors?period=${selectedPeriod}`);
+              const token = document.cookie
+                .split("; ")
+                .find(row => row.startsWith("auth-token="))
+                ?.split("=")[1]
 
-              if (!sensorsResponse.ok) throw new Error('Erreur lors de la récupération des données des capteurs');
+              if (!token) return
 
-              const sensorsData = await sensorsResponse.json();
+              const devicesResponse = await fetch('/api/devices', {
+                headers: {
+                  "Authorization": `Bearer ${token}`
+                }
+              })
+              if (devicesResponse.ok) {
+                const devicesData = await devicesResponse.json()
+                
+                // Récupérer les capteurs pour chaque device
+                const devicesWithSensors = await Promise.all(
+                  devicesData.map(async (device: { id: number, name: string }) => {
+                    const sensorsResponse = await fetch(`/api/sensors?period=${selectedPeriod}`, {
+                      headers: {
+                        "Authorization": `Bearer ${token}`
+                      }
+                    })
 
-              const sensorsWithAlertStatus = sensorsData.map((sensor: SensorWithData) => {
-                const isInAlert = sensor.activeAlert !== null;
-                return {
-                  ...sensor,
-                  isInAlert
-                };
-              });
+                    if (!sensorsResponse.ok) throw new Error('Erreur lors de la récupération des capteurs')
 
-              setSensors(sensorsWithAlertStatus);
-              
-              const alertSensors = sensorsWithAlertStatus.filter((s: SensorWithData) => s.isInAlert);
-              setSensorsInAlert(alertSensors);
+                    const sensorsData = await sensorsResponse.json()
+                    const deviceSensors = sensorsData.filter((sensor: SensorWithData) => sensor.deviceId === device.id)
+
+                    // Vérifier les capteurs qui ont une alerte active
+                    const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
+                      const isInAlert = sensor.activeAlert !== null;
+                      return {
+                        ...sensor,
+                        isInAlert
+                      };
+                    });
+
+                    return {
+                      ...device,
+                      sensors: sensorsWithAlertStatus
+                    }
+                  })
+                )
+
+                setDevices(devicesWithSensors)
+                
+                // Filtrer les capteurs en alerte
+                const alertSensors = devicesWithSensors.flatMap(device => 
+                  device.sensors.filter((s: SensorWithData) => s.isInAlert)
+                )
+                setSensorsInAlert(alertSensors)
+              }
             } catch (error) {
               console.error('Erreur lors de la récupération des données:', error)
             }

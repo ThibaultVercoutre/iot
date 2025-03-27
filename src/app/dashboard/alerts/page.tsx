@@ -110,8 +110,21 @@ export default function AlertsHistory() {
   useEffect(() => {
     const fetchAlerts = async () => {
       try {
+        const token = document.cookie
+          .split("; ")
+          .find(row => row.startsWith("auth-token="))
+          ?.split("=")[1]
+
+        if (!token) {
+          throw new Error("Pas de token")
+        }
+
         const query = showOnlyActive ? '?active=true' : ''
-        const response = await fetch(`/api/alerts${query}`)
+        const response = await fetch(`/api/alerts${query}`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        })
         
         if (!response.ok) {
           throw new Error('Erreur lors de la récupération des alertes')

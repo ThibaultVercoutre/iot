@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 interface TTNPayload {
   end_device_ids: {
@@ -14,10 +12,16 @@ interface TTNPayload {
   };
   received_at: string;
   uplink_message: {
-    decoded_payload: {
-      value: number | boolean;
-    };
+    decoded_payload: Record<string, number | boolean>;
   };
+}
+
+interface SensorWithThreshold {
+  id: number;
+  name: string;
+  isBinary: boolean;
+  uniqueId: string;
+  threshold?: { value: number } | null;
 }
 
 export async function POST(request: Request) {
@@ -25,17 +29,15 @@ export async function POST(request: Request) {
     const data: TTNPayload = await request.json();
     console.log('Données reçues de TTN:', JSON.stringify(data, null, 2));
 
-    const deviceId = data.end_device_ids.device_id;
+    // const deviceId = data.end_device_ids.device_id;
     const applicationId = data.end_device_ids.application_ids.application_id;
     const joinEui = data.end_device_ids.join_eui;
     const devEui = data.end_device_ids.dev_eui;
-    const rawValue = data.uplink_message.decoded_payload.value;
-    const value = typeof rawValue === 'boolean' ? (rawValue ? 1 : 0) : rawValue;
+    const payload = data.uplink_message.decoded_payload;
 
-    // Trouver le capteur associé à ce device_id et join_eui
-    const sensor = await prisma.sensor.findFirst({
+    // Trouver le device associé à ce join_eui et dev_eui
+    const device = await prisma.device.findFirst({
       where: {
-        deviceId: deviceId,
         joinEui: joinEui,
         devEui: devEui,
         user: {
@@ -43,126 +45,133 @@ export async function POST(request: Request) {
         }
       },
       include: {
-        threshold: true
+        sensors: {
+          include: {
+            threshold: true
+          }
+        }
       }
     });
 
-    if (!sensor) {
-      console.warn(`Aucun capteur trouvé pour le device_id: ${deviceId}, join_eui: ${joinEui} et dev_eui: ${devEui}`);
+    if (!device) {
+      console.warn(`Aucun device trouvé pour le join_eui: ${joinEui} et dev_eui: ${devEui}`);
       return NextResponse.json({ 
-        message: 'Aucun capteur correspondant trouvé',
-        deviceId,
+        message: 'Aucun device correspondant trouvé',
         joinEui,
         devEui
       }, { status: 404 });
     }
 
-    // Créer l'entrée dans la base de données
-    const sensorData = await prisma.sensorData.create({
-      data: {
-        value: value,
-        sensorId: sensor.id,
-        timestamp: new Date(data.received_at)
+    // Traiter chaque valeur dans le payload
+    for (const [sensorUniqueId, rawValue] of Object.entries(payload)) {
+      const sensor = device.sensors.find((s: SensorWithThreshold) => s.uniqueId === sensorUniqueId);
+      
+      if (!sensor) {
+        console.warn(`Aucun capteur trouvé pour l'ID unique: ${sensorUniqueId}`);
+        continue;
       }
-    });
 
-    console.log(`Donnée enregistrée pour le capteur ${sensor.name}: ${value} (${sensor.isBinary ? 'binaire' : 'numérique'})`);
+      const value = typeof rawValue === 'boolean' ? (rawValue ? 1 : 0) : rawValue;
 
-    // Vérifier si les alertes sont activées pour cet utilisateur
-    const user = await prisma.user.findUnique({
-      where: { id: sensor.userId }
-    });
-    
-    const alertsEnabled = user?.alertsEnabled ?? true;
-
-    // Vérifier s'il existe une alerte active pour ce capteur
-    const activeAlert = await prisma.alertLog.findFirst({
-      where: {
-        sensorId: sensor.id,
-        endDataId: null
-      }
-    });
-
-    // Pour les capteurs binaires
-    if (sensor.isBinary) {
-      // Pour les capteurs binaires, on crée une alerte à chaque fois qu'on reçoit 1
-      if (value === 1) {
-        // Si c'est le capteur d'alerte (bouton), on met la même date de début et de fin
-        if (user?.alertSensorId === sensor.id) {
-          await prisma.alertLog.create({
-            data: {
-              sensorId: sensor.id,
-              startDataId: sensorData.id,
-              endDataId: sensorData.id, // Même ID pour début et fin
-              thresholdValue: 1
-            }
-          });
-        } else {
-          // Pour les autres capteurs binaires, comportement normal
-          await prisma.alertLog.create({
-            data: {
-              sensorId: sensor.id,
-              startDataId: sensorData.id,
-              thresholdValue: 1
-            }
-          });
+      // Créer l'entrée dans la base de données
+      const sensorData = await prisma.sensorData.create({
+        data: {
+          value: value,
+          sensorId: sensor.id,
+          timestamp: new Date(data.received_at)
         }
-      } else {
-        // Si on reçoit 0, on termine l'alerte active si elle existe
-        if (activeAlert) {
+      });
+
+      console.log(`Donnée enregistrée pour le capteur ${sensor.name}: ${value} (${sensor.isBinary ? 'binaire' : 'numérique'})`);
+
+      // Vérifier si les alertes sont activées pour cet utilisateur
+      const user = await prisma.user.findUnique({
+        where: { id: device.userId }
+      });
+      
+      if (!user) {
+        console.warn(`Utilisateur non trouvé pour le device ${device.id}`);
+        continue;
+      }
+
+      const alertsEnabled = user.alertsEnabled ?? true;
+
+      // Vérifier s'il existe une alerte active pour ce capteur
+      const activeAlert = await prisma.alertLog.findFirst({
+        where: {
+          sensorId: sensor.id,
+          endDataId: null
+        }
+      });
+
+      // Pour les capteurs binaires
+      if (sensor.isBinary) {
+        if (value === 1 && !activeAlert && alertsEnabled) {
+          // Créer une nouvelle alerte
+          await prisma.alertLog.create({
+            data: {
+              sensorId: sensor.id,
+              startDataId: sensorData.id,
+              thresholdValue: 1
+            }
+          });
+          console.log(`Nouvelle alerte créée pour ${sensor.name}: ${value}`);
+        }
+        else if (value === 0 && activeAlert) {
+          // Mettre à jour l'alerte existante
           await prisma.alertLog.update({
             where: { id: activeAlert.id },
             data: {
               endDataId: sensorData.id
             }
           });
+          console.log(`Alerte terminée pour ${sensor.name}: ${value}`);
         }
       }
-    }
-    // Pour les capteurs numériques avec seuil
-    else if (sensor.threshold) {
-      const thresholdValue = sensor.threshold.value;
-      
-      // Cas où le seuil est dépassé et pas d'alerte active
-      if (value > thresholdValue && !activeAlert && alertsEnabled) {
-        // Créer une nouvelle alerte
-        await prisma.alertLog.create({
-          data: {
-            sensorId: sensor.id,
-            startDataId: sensorData.id,
-            thresholdValue: thresholdValue
-          }
-        });
-        console.log(`Nouvelle alerte créée pour ${sensor.name}: ${value} > ${thresholdValue}`);
+      // Pour les capteurs numériques avec seuil
+      else if (sensor.threshold) {
+        const thresholdValue = sensor.threshold.value;
+        
+        // Cas où le seuil est dépassé et pas d'alerte active
+        if (value > thresholdValue && !activeAlert && alertsEnabled) {
+          // Créer une nouvelle alerte
+          await prisma.alertLog.create({
+            data: {
+              sensorId: sensor.id,
+              startDataId: sensorData.id,
+              thresholdValue: thresholdValue
+            }
+          });
+          console.log(`Nouvelle alerte créée pour ${sensor.name}: ${value} > ${thresholdValue}`);
+        }
+        // Cas où la valeur revient sous le seuil et il existe une alerte active
+        else if (value <= thresholdValue && activeAlert) {
+          // Mettre à jour l'alerte existante
+          await prisma.alertLog.update({
+            where: { id: activeAlert.id },
+            data: {
+              endDataId: sensorData.id
+            }
+          });
+          console.log(`Alerte terminée pour ${sensor.name}: ${value} <= ${thresholdValue}`);
+        }
       }
-      // Cas où la valeur revient sous le seuil et il existe une alerte active
-      else if (value <= thresholdValue && activeAlert) {
-        // Mettre à jour l'alerte existante
-        await prisma.alertLog.update({
-          where: { id: activeAlert.id },
-          data: {
-            endDataId: sensorData.id
-          }
-        });
-        console.log(`Alerte terminée pour ${sensor.name}: ${value} <= ${thresholdValue}`);
-      }
-    }
 
-    // Si c'est le capteur d'alerte et qu'il a reçu une valeur de 1
-    if (user?.alertSensorId === sensor.id && value === 1) {
-      // Inverser l'état des alertes
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          alertsEnabled: !user.alertsEnabled
-        }
-      });
-      console.log(`État des alertes mis à jour pour l'utilisateur ${user.id}: ${!user.alertsEnabled}`);
+      // Si c'est le capteur d'alerte et qu'il a reçu une valeur de 1
+      if (user.alertSensorId === sensor.id && value === 1) {
+        // Inverser l'état des alertes
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            alertsEnabled: !user.alertsEnabled
+          }
+        });
+        console.log(`État des alertes mis à jour pour l'utilisateur ${user.id}: ${!user.alertsEnabled}`);
+      }
     }
 
     return NextResponse.json({ 
-      message: 'Donnée enregistrée avec succès',
-      sensorData 
+      message: 'Données enregistrées avec succès'
     }, { status: 200 });
 
   } catch (error) {
@@ -171,7 +180,5 @@ export async function POST(request: Request) {
       error: 'Erreur lors du traitement des données',
       details: error instanceof Error ? error.message : 'Erreur inconnue'
     }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 } 
