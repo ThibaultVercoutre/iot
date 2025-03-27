@@ -14,7 +14,9 @@ interface TTNPayload {
   };
   uplink_message: {
     frm_payload: string;
-    decoded_payload?: any;
+    decoded_payload?: {
+      [key: string]: number;
+    };
     received_at: string;
   };
 }
