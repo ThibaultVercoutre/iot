@@ -29,6 +29,8 @@ export async function GET(request: Request) {
 
     // Calculer la date de début selon la période
     const startDate = new Date();
+    startDate.setHours(startDate.getHours() - startDate.getTimezoneOffset() / 60); // Ajuster pour UTC
+    
     switch (period) {
       case "6h":
         startDate.setHours(startDate.getHours() - 6);

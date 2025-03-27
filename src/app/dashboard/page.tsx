@@ -478,7 +478,7 @@ export default function Dashboard() {
                 {sensor.isBinary && ' (Détection d\'activité)'}
                 {sensor.alertLogs[0] && (
                   <span className="text-red-600 ml-2">
-                    {`(En alerte depuis ${formatElapsedTime(sensor.alertLogs[0].createdAt)} - Valeur déclenchement: ${formatValue(sensor, sensor.alertLogs[0].startData.value)})`}
+                    {`(En alerte depuis le ${new Date(sensor.alertLogs[0].createdAt).toLocaleDateString()} à ${new Date(sensor.alertLogs[0].createdAt).toLocaleTimeString()} - Valeur déclenchement: ${formatValue(sensor, sensor.alertLogs[0].startData.value)})`}
                   </span>
                 )}
               </li>

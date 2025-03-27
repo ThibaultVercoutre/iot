@@ -69,8 +69,15 @@ async function main() {
 
   // Heure de référence actuelle pour toutes les données créées
   const now = new Date()
+  // Ajuster pour avoir une heure fixe en UTC
   now.setDate(now.getDate() - 1)
-  now.setHours(21, 30, 29, 0)
+  // On garde l'heure UTC actuelle pour éviter les problèmes de timezone
+  // On garde l'heure actuelle en UTC
+  now.setUTCHours(new Date().getUTCHours(), new Date().getUTCMinutes(), new Date().getUTCSeconds(), 0)
+  
+  // Temps de début pour les données: 49 minutes avant now
+  const startTime = new Date(now)
+  startTime.setUTCMinutes(startTime.getUTCMinutes() - 49)
 
   // Créer les capteurs
   for (const sensorType of sensorTypes) {
@@ -114,10 +121,6 @@ async function main() {
 
     // Générer les données pour le graphique (50 points)
     const values = []
-
-    // Temps de début pour les données: 20:42:29 (49 minutes avant now)
-    const startTime = new Date(now)
-    startTime.setMinutes(startTime.getMinutes() - 49)
 
     for (let i = 0; i < 50; i++) {
       let value: number
