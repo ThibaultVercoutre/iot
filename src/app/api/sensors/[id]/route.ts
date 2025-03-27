@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
 
 const prisma = new PrismaClient();
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const token = request.headers.get("Authorization")?.split(" ")[1];
@@ -24,7 +24,7 @@ export async function DELETE(
     // Vérifier que le capteur appartient à l'utilisateur
     const sensor = await prisma.sensor.findFirst({
       where: {
-        id: parseInt(params.id),
+        id: parseInt((await params).id),
         device: {
           userId: decoded.userId
         }
