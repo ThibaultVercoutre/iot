@@ -25,8 +25,7 @@ async function main() {
       email: "test@example.com",
       password: hashedPassword,
       name: "Test User",
-      alertsEnabled: true,
-      ttnId: "iot-project-dashboard",
+      alertsEnabled: true
     },
   })
 
@@ -36,8 +35,8 @@ async function main() {
   const device = await prisma.device.create({
     data: {
       name: "Device de test",
-      joinEui: "7878787878787878",
-      devEui: "70B3D57ED006F550",
+      joinEui: "1212121212121212",
+      devEui: "70B3D57ED006F3C6",
       userId: user.id
     }
   })
@@ -187,7 +186,7 @@ async function main() {
   }
 
   // Créer les alertes
-  await createAlerts(sensorIds)
+  await createAlerts(sensorIds, user.id)
 }
 
 async function cleanDatabase() {
@@ -201,7 +200,7 @@ async function cleanDatabase() {
   console.log("Base de données nettoyée.")
 }
 
-async function createAlerts(sensorIds: Record<SensorType, number>) {
+async function createAlerts(sensorIds: Record<SensorType, number>, userId: number) {
   console.log("Création des alertes...")
   
   const soundThreshold = await prisma.threshold.findUnique({
@@ -315,7 +314,7 @@ async function createAlerts(sensorIds: Record<SensorType, number>) {
 
   // Ajouter à l'user l'id du capteur bouton
   await prisma.user.update({
-    where: { id: 1 },
+    where: { id: userId },
     data: {
       alertSensorId: sensorIds[SensorType.BUTTON]
     }
