@@ -104,7 +104,8 @@ const getSensorColor = (type: SensorType) => {
 const formatElapsedTime = (startDate: string) => {
   const start = new Date(startDate)
   const now = new Date()
-  const diffSeconds = Math.floor((now.getTime() - start.getTime()) / 1000)
+  // Ajuster pour la timezone locale
+  const diffSeconds = Math.floor((now.getTime() - (start.getTime() + start.getTimezoneOffset() * 60000)) / 1000)
   
   if (diffSeconds < 60) {
     return `${diffSeconds} seconde${diffSeconds > 1 ? 's' : ''}`
