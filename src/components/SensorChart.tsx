@@ -11,7 +11,6 @@ import {
   Tooltip,
   Legend,
   TooltipItem,
-  ChartTypeRegistry
 } from 'chart.js';
 
 ChartJS.register(
