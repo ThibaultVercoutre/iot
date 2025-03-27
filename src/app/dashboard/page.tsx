@@ -69,7 +69,7 @@ interface User {
 }
 
 // Configuration des couleurs par type de capteur
-const sensorColors = {
+const sensorColors: Record<SensorType, string> = {
   [SensorType.SOUND]: '#FF6B6B',
   [SensorType.VIBRATION]: '#4ECDC4',
   [SensorType.BUTTON]: '#45B7D1',
@@ -95,27 +95,9 @@ const formatValue = (sensor: SensorWithData, value: number) => {
   }
 }
 
-// Fonction pour obtenir la couleur selon le type de capteur
+// Fonction pour obtenir la couleur d'un type de capteur
 const getSensorColor = (type: SensorType) => {
   return sensorColors[type]
-}
-
-// Fonction pour formater la durée écoulée
-const formatElapsedTime = (startDate: string) => {
-  const start = new Date(startDate)
-  const now = new Date()
-  // Ajuster pour la timezone locale
-  const diffSeconds = Math.floor((now.getTime() - (start.getTime() + start.getTimezoneOffset() * 60000)) / 1000)
-  
-  if (diffSeconds < 60) {
-    return `${diffSeconds} seconde${diffSeconds > 1 ? 's' : ''}`
-  }
-  if (diffSeconds < 3600) {
-    const minutes = Math.floor(diffSeconds / 60)
-    return `${minutes} minute${minutes > 1 ? 's' : ''}`
-  }
-  const hours = Math.floor(diffSeconds / 3600)
-  return `${hours} heure${hours > 1 ? 's' : ''}`
 }
 
 // Composant pour le graphique d'un capteur
