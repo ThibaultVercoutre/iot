@@ -15,7 +15,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus } from "lucide-react"
 import { SensorType } from "@prisma/client"
-import { v4 as uuidv4 } from 'uuid'
 import {
   Select,
   SelectContent,
@@ -23,6 +22,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+
+// Fonction pour générer un ID unique court
+function generateShortId() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
 
 interface Device {
   id: number
@@ -64,7 +73,7 @@ export function AddSensorDialog({ onSensorAdded }: AddSensorDialogProps) {
           name,
           type,
           deviceId,
-          uniqueId: uuidv4(),
+          uniqueId: generateShortId(),
           isBinary: type === SensorType.BUTTON
         }),
       })
