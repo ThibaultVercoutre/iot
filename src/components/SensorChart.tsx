@@ -86,13 +86,13 @@ export default function SensorChart({ data, label, color, timeRange = 24, thresh
         mode: 'index' as const,
         intersect: false,
         callbacks: {
-          title: (context: any) => {
-            const date = new Date(currentTime.getTime() + context[0].parsed.x * 1000 * 60 * 60);
+          title: (items: TooltipItem<'line'>[]) => {
+            const date = new Date(currentTime.getTime() + items[0].parsed.x * 1000 * 60 * 60);
             return date.toLocaleString();
           },
-          label: (context: any) => {
+          label: (item: TooltipItem<'line'>) => {
             const lines = [
-              `${label} : ${context.parsed.y} dB`,
+              `${label} : ${item.parsed.y} dB`,
             ];
             if (threshold) {
               lines.push(`Seuil : ${threshold} dB`);

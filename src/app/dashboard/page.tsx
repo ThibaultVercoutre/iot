@@ -75,12 +75,6 @@ const sensorColors: Record<SensorType, string> = {
   [SensorType.BUTTON]: '#45B7D1',
 }
 
-// Fonction pour formater la date
-const formatDate = (timestamp: string) => {
-  const date = new Date(timestamp)
-  return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`
-}
-
 // Fonction pour formater la valeur selon le type
 const formatValue = (sensor: SensorWithData, value: number) => {
   if (sensor.isBinary) {
