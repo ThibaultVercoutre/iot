@@ -70,7 +70,7 @@ async function main() {
   // Heure de référence actuelle pour toutes les données créées
   const now = new Date()
   // Ajuster pour avoir une heure fixe en UTC
-  now.setDate(now.getDate() - 1)
+  // now.setDate(now.getDate() - 1)
   // On garde l'heure UTC actuelle pour éviter les problèmes de timezone
   // On garde l'heure actuelle en UTC
   now.setUTCHours(new Date().getUTCHours(), new Date().getUTCMinutes(), new Date().getUTCSeconds(), 0)
