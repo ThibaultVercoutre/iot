@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 interface TTNPayload {
   end_device_ids: {
@@ -7,21 +9,36 @@ interface TTNPayload {
     application_ids: {
       application_id: string;
     };
-    dev_eui: string;
     join_eui: string;
+    dev_eui: string;
   };
-  received_at: string;
   uplink_message: {
-    decoded_payload: Record<string, number | boolean>;
+    frm_payload: string;
+    decoded_payload?: any;
+    received_at: string;
   };
 }
 
-interface SensorWithThreshold {
-  id: number;
-  name: string;
-  isBinary: boolean;
-  uniqueId: string;
-  threshold?: { value: number } | null;
+function decodeUplink(bytes: number[]) {
+  // Vérifier que le payload contient au moins 4 octets
+  if (bytes.length < 4) {
+    return {
+      errors: ["Payload incomplet: doit avoir au moins 4 octets"]
+    };
+  }
+
+  // Décoder les valeurs
+  const data = {
+    "BG3022IN": bytes[0],          // Vibration (0 ou 1)
+    "OYUTA1K6": bytes[1],          // Bouton (0 ou 1)
+    "RWWSZ5RT": (bytes[2] << 8) + bytes[3]  // Son (2 octets)
+  };
+
+  return {
+    data,
+    warnings: [],
+    errors: []
+  };
 }
 
 export async function POST(request: Request) {
@@ -29,11 +46,9 @@ export async function POST(request: Request) {
     const data: TTNPayload = await request.json();
     console.log('Données reçues de TTN:', JSON.stringify(data, null, 2));
 
-    // const deviceId = data.end_device_ids.device_id;
     const applicationId = data.end_device_ids.application_ids.application_id;
     const joinEui = data.end_device_ids.join_eui;
     const devEui = data.end_device_ids.dev_eui;
-    const payload = data.uplink_message.decoded_payload;
 
     // Trouver le device associé à ce join_eui et dev_eui
     const device = await prisma.device.findFirst({
@@ -62,27 +77,45 @@ export async function POST(request: Request) {
       }, { status: 404 });
     }
 
+    // Convertir le payload base64 en tableau d'octets
+    const bytes = Buffer.from(data.uplink_message.frm_payload, 'base64');
+    
+    // Décoder le payload
+    const decoded = decodeUplink([...bytes]);
+    
+    if (decoded.errors && decoded.errors.length > 0) {
+      return NextResponse.json(
+        { error: decoded.errors[0] },
+        { status: 400 }
+      );
+    }
+
+    if (!decoded.data) {
+      return NextResponse.json(
+        { error: "Données décodées invalides" },
+        { status: 400 }
+      );
+    }
+
     // Traiter chaque valeur dans le payload
-    for (const [sensorUniqueId, rawValue] of Object.entries(payload)) {
-      const sensor = device.sensors.find((s: SensorWithThreshold) => s.uniqueId === sensorUniqueId);
+    for (const [sensorUniqueId, value] of Object.entries(decoded.data)) {
+      const sensor = device.sensors.find(s => s.uniqueId === sensorUniqueId);
       
       if (!sensor) {
         console.warn(`Aucun capteur trouvé pour l'ID unique: ${sensorUniqueId}`);
         continue;
       }
 
-      const value = typeof rawValue === 'boolean' ? (rawValue ? 1 : 0) : rawValue;
-
       // Créer l'entrée dans la base de données
       const sensorData = await prisma.sensorData.create({
         data: {
-          value: value,
+          value: Number(value),
           sensorId: sensor.id,
-          timestamp: new Date(data.received_at)
+          timestamp: new Date(data.uplink_message.received_at)
         }
       });
 
-      console.log(`Donnée enregistrée pour le capteur ${sensor.name}: ${value} (${sensor.isBinary ? 'binaire' : 'numérique'})`);
+      console.log(`Donnée enregistrée pour le capteur ${sensor.name}: ${value}`);
 
       // Vérifier si les alertes sont activées pour cet utilisateur
       const user = await prisma.user.findUnique({
@@ -112,20 +145,11 @@ export async function POST(request: Request) {
             data: {
               sensorId: sensor.id,
               startDataId: sensorData.id,
+              endDataId: sensorData.id,
               thresholdValue: 1
             }
           });
           console.log(`Nouvelle alerte créée pour ${sensor.name}: ${value}`);
-        }
-        else if (value === 0 && activeAlert) {
-          // Mettre à jour l'alerte existante
-          await prisma.alertLog.update({
-            where: { id: activeAlert.id },
-            data: {
-              endDataId: sensorData.id
-            }
-          });
-          console.log(`Alerte terminée pour ${sensor.name}: ${value}`);
         }
       }
       // Pour les capteurs numériques avec seuil
@@ -133,7 +157,7 @@ export async function POST(request: Request) {
         const thresholdValue = sensor.threshold.value;
         
         // Cas où le seuil est dépassé et pas d'alerte active
-        if (value > thresholdValue && !activeAlert && alertsEnabled) {
+        if (value >= thresholdValue && !activeAlert && alertsEnabled) {
           // Créer une nouvelle alerte
           await prisma.alertLog.create({
             data: {
@@ -142,10 +166,10 @@ export async function POST(request: Request) {
               thresholdValue: thresholdValue
             }
           });
-          console.log(`Nouvelle alerte créée pour ${sensor.name}: ${value} > ${thresholdValue}`);
+          console.log(`Nouvelle alerte créée pour ${sensor.name}: ${value} >= ${thresholdValue}`);
         }
         // Cas où la valeur revient sous le seuil et il existe une alerte active
-        else if (value <= thresholdValue && activeAlert) {
+        else if (value < thresholdValue && activeAlert) {
           // Mettre à jour l'alerte existante
           await prisma.alertLog.update({
             where: { id: activeAlert.id },
@@ -153,20 +177,8 @@ export async function POST(request: Request) {
               endDataId: sensorData.id
             }
           });
-          console.log(`Alerte terminée pour ${sensor.name}: ${value} <= ${thresholdValue}`);
+          console.log(`Alerte terminée pour ${sensor.name}: ${value} < ${thresholdValue}`);
         }
-      }
-
-      // Si c'est le capteur d'alerte et qu'il a reçu une valeur de 1
-      if (user.alertSensorId === sensor.id && value === 1) {
-        // Inverser l'état des alertes
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            alertsEnabled: !user.alertsEnabled
-          }
-        });
-        console.log(`État des alertes mis à jour pour l'utilisateur ${user.id}: ${!user.alertsEnabled}`);
       }
     }
 
