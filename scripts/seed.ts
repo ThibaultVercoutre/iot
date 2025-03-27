@@ -35,8 +35,8 @@ async function main() {
   const device = await prisma.device.create({
     data: {
       name: "Device de test",
-      joinEui: "1212121212121212",
-      devEui: "70B3D57ED006F3C6",
+      joinEui: "7878787878787878",
+      devEui: "70B3D57ED006F550",
       userId: user.id
     }
   })
@@ -91,9 +91,7 @@ async function main() {
         type: sensorType.type,
         isBinary: sensorType.isBinary,
         uniqueId,
-        deviceId: device.id,
-        joinEui: device.joinEui,
-        devEui: device.devEui
+        deviceId: device.id
       },
     })
 

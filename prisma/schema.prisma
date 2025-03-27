@@ -41,8 +41,6 @@ model Sensor {
   type        SensorType
   uniqueId    String    @unique
   deviceId    Int
-  joinEui     String    @db.VarChar(16)
-  devEui      String    @db.VarChar(16)
   isBinary    Boolean   @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

@@ -154,9 +154,7 @@ export async function POST(request: Request) {
         type,
         isBinary,
         uniqueId,
-        deviceId,
-        joinEui: device.joinEui,
-        devEui: device.devEui
+        deviceId
       },
     });
 
