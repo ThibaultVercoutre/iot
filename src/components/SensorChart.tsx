@@ -55,10 +55,22 @@ export default function SensorChart({ data, label, color }: SensorChartProps) {
 
   // Associer les valeurs aux timestamps réguliers
   const normalizedData = regularTimestamps.map(timestamp => {
-    const closestData = sortedData.find(d => 
-      Math.abs(new Date(d.timestamp).getTime() - timestamp) < timeStep / 2
+    // Trouver l'index le plus proche dans les données triées
+    const index = sortedData.findIndex(d => 
+      new Date(d.timestamp).getTime() > timestamp
     );
-    return closestData ? closestData.value : null;
+    
+    if (index === -1) return sortedData[sortedData.length - 1].value;
+    if (index === 0) return sortedData[0].value;
+    
+    // Interpolation linéaire entre les deux points les plus proches
+    const prevData = sortedData[index - 1];
+    const nextData = sortedData[index];
+    const prevTime = new Date(prevData.timestamp).getTime();
+    const nextTime = new Date(nextData.timestamp).getTime();
+    
+    const ratio = (timestamp - prevTime) / (nextTime - prevTime);
+    return prevData.value + (nextData.value - prevData.value) * ratio;
   });
 
   const chartData = {
