@@ -101,7 +101,7 @@ export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [thresholdValues, setThresholdValues] = useState<{ [key: number]: string }>({})
-  const [selectedPeriod, setSelectedPeriod] = useState<'6h' | '12h' | 'day' | 'week' | 'month'>('day')
+  const [selectedPeriod, setSelectedPeriod] = useState<'1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month'>('day')
   const [selectedType, setSelectedType] = useState<SensorType | 'all'>('all')
   const [alertFilter, setAlertFilter] = useState<'all' | 'alert'>('all')
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -408,16 +408,18 @@ export default function Dashboard() {
         <div className="flex flex-wrap gap-4 w-full sm:w-auto">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            <Select value={selectedPeriod} onValueChange={(value: '6h' | '12h' | 'day' | 'week' | 'month') => setSelectedPeriod(value)}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Période" />
+            <Select value={selectedPeriod} onValueChange={(value: '1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month') => setSelectedPeriod(value)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sélectionner une période" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="6h">6h</SelectItem>
-                <SelectItem value="12h">12h</SelectItem>
-                <SelectItem value="day">24h</SelectItem>
-                <SelectItem value="week">7 jours</SelectItem>
-                <SelectItem value="month">30 jours</SelectItem>
+                <SelectItem value="1h">1 heure</SelectItem>
+                <SelectItem value="3h">3 heures</SelectItem>
+                <SelectItem value="6h">6 heures</SelectItem>
+                <SelectItem value="12h">12 heures</SelectItem>
+                <SelectItem value="day">24 heures</SelectItem>
+                <SelectItem value="week">1 semaine</SelectItem>
+                <SelectItem value="month">1 mois</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -674,7 +676,9 @@ export default function Dashboard() {
                               timeRange={selectedPeriod === 'week' ? 168 : // 7 jours * 24h
                                        selectedPeriod === 'month' ? 720 : // 30 jours * 24h
                                        selectedPeriod === '12h' ? 12 :
-                                       selectedPeriod === '6h' ? 6 : 24} // 24h par défaut
+                                       selectedPeriod === '6h' ? 6 :
+                                       selectedPeriod === '3h' ? 3 :
+                                       selectedPeriod === '1h' ? 1 : 24} // 24h par défaut
                               threshold={sensor.threshold?.value}
                               isBinary={sensor.isBinary}
                             />
