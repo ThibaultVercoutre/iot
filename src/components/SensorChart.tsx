@@ -13,7 +13,6 @@ import {
   TooltipItem,
   Scale,
   CoreScaleOptions,
-  Tick,
 } from 'chart.js';
 import annotationPlugin from 'chartjs-plugin-annotation';
 
