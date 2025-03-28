@@ -66,7 +66,7 @@ export default function SensorChart({ data, label, color, timeRange = 24, thresh
   const xMin = Math.floor((oldestTime.getTime() - currentTime.getTime()) / (1000 * 60 * 60)) - 1;
   const xMax = Math.floor((latestTime.getTime() - currentTime.getTime()) / (1000 * 60 * 60));
 
-  console.log(xMin, xMax);
+  console.log(xMin, xMax, oldestTime, latestTime, currentTime);
   // Filtrer et trier les données dans la plage temporelle
   const sortedData = [...data]
     .filter(d => new Date(d.timestamp) >= oldestAllowedTime)
