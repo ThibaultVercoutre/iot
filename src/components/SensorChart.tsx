@@ -184,7 +184,7 @@ export default function SensorChart({ data, label, color, timeRange = 24, thresh
             const range = Math.max(...sortedData.map(d => d.value)) - Math.min(...sortedData.map(d => d.value));
             return Math.ceil(range / 10);
           })(),
-          callback: function(this: Scale<CoreScaleOptions>, tickValue: number | string, index: number, ticks: Tick[]) {
+          callback: function(this: Scale<CoreScaleOptions>, tickValue: number | string) {
             const value = Number(tickValue);
             if (isBinary) {
               return value === 1 ? 'ON' : value === 0 ? 'OFF' : '';
