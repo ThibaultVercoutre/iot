@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SensorType, Sensor } from '@prisma/client'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AlertCircle, History, Filter, Clock, Trash2, Copy, Check } from "lucide-react"
+import { AlertCircle, History, Filter, Clock, Trash2, Copy, Check, LayoutGrid, LayoutList } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import {
@@ -104,7 +104,8 @@ export default function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<'1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month'>('day')
   const [selectedType, setSelectedType] = useState<SensorType | 'all'>('all')
   const [alertFilter, setAlertFilter] = useState<'all' | 'alert'>('all')
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [deviceLayouts, setDeviceLayouts] = useState<{ [key: number]: 'grid' | 'list' }>({})
 
   useEffect(() => {
     const verifyAuth = async () => {
@@ -455,10 +456,32 @@ export default function Dashboard() {
         {filteredDevices.map((device) => (
           <Card key={device.id} className="p-6">
             <CardHeader>
-              <CardTitle className="text-xl mb-4">{device.name}</CardTitle>
+              <div className="flex items-center justify-between mb-4">
+                <CardTitle className="text-xl">{device.name}</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setDeviceLayouts(prev => ({
+                    ...prev,
+                    [device.id]: prev[device.id] === 'grid' ? 'list' : 'grid'
+                  }))}
+                  className="hover:bg-gray-100"
+                >
+                  {deviceLayouts[device.id] === 'list' ? (
+                    <LayoutGrid className="h-5 w-5" />
+                  ) : (
+                    <LayoutList className="h-5 w-5" />
+                  )}
+                  <span className="sr-only">Changer la disposition</span>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className={`grid gap-4 ${
+                deviceLayouts[device.id] === 'list' 
+                  ? 'grid-cols-1'
+                  : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
+              }`}>
                 {device.sensors.map((sensor) => {
                   const latestData = sensor.historicalData && sensor.historicalData.length > 0 ? sensor.historicalData[0] : null;
                   
