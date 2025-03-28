@@ -11,6 +11,9 @@ import {
   Tooltip,
   Legend,
   TooltipItem,
+  Scale,
+  CoreScaleOptions,
+  Tick,
 } from 'chart.js';
 import annotationPlugin from 'chartjs-plugin-annotation';
 
@@ -38,9 +41,10 @@ interface SensorChartProps {
   color: string;
   timeRange?: number;
   threshold?: number;
+  isBinary?: boolean;
 }
 
-export default function SensorChart({ data, label, color, timeRange = 24, threshold }: SensorChartProps) {
+export default function SensorChart({ data, label, color, timeRange = 24, threshold, isBinary = false }: SensorChartProps) {
   if (data.length === 0) {
     return (
       <div className="w-full h-[200px] flex items-center justify-center text-gray-500">
@@ -68,6 +72,27 @@ export default function SensorChart({ data, label, color, timeRange = 24, thresh
     .filter(d => new Date(d.timestamp) >= oldestAllowedTime)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
+  const chartData = {
+    datasets: [{
+      label,
+      data: sortedData.map(d => ({
+        x: (new Date(d.timestamp).getTime() - currentTime.getTime()) / (1000 * 60 * 60),
+        y: d.value
+      })),
+      backgroundColor: color,
+      borderColor: color,
+      pointStyle: isBinary ? 'none' as const : 'circle' as const,
+      pointRadius: isBinary ? 0 : 2,
+      pointHoverRadius: isBinary ? 0 : 5,
+      pointHoverBackgroundColor: color,
+      pointHoverBorderColor: color,
+      borderWidth: 2,
+      tension: isBinary ? 0 : 0.4,
+      stepped: isBinary ? 'before' as const : undefined,
+      fill: false
+    }]
+  };
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
@@ -92,10 +117,10 @@ export default function SensorChart({ data, label, color, timeRange = 24, thresh
           },
           label: (item: TooltipItem<'line'>) => {
             const lines = [
-              `${label} : ${item.parsed.y} dB`,
+              `${label} : ${isBinary ? (item.parsed.y === 1 ? 'ON' : 'OFF') : `${item.parsed.y} ${label.includes('son') ? 'dB' : ''}`}`,
             ];
             if (threshold) {
-              lines.push(`Seuil : ${threshold} dB`);
+              lines.push(`Seuil : ${threshold} ${label.includes('son') ? 'dB' : ''}`);
             }
             return lines;
           }
@@ -144,44 +169,31 @@ export default function SensorChart({ data, label, color, timeRange = 24, thresh
         grid: {
           color: 'rgba(0, 0, 0, 0.1)',
         },
-        min: (() => {
+        min: isBinary ? -0.1 : (() => {
           const minValue = Math.min(...sortedData.map(d => d.value));
           const range = Math.max(...sortedData.map(d => d.value)) - minValue;
           return Math.max(0, minValue - range * 0.1);
         })(),
-        max: (() => {
+        max: isBinary ? 1.1 : (() => {
           const maxValue = Math.max(...sortedData.map(d => d.value));
           const range = maxValue - Math.min(...sortedData.map(d => d.value));
           return maxValue + range * 0.1;
         })(),
         ticks: {
-          stepSize: (() => {
+          stepSize: isBinary ? 1 : (() => {
             const range = Math.max(...sortedData.map(d => d.value)) - Math.min(...sortedData.map(d => d.value));
             return Math.ceil(range / 10);
-          })()
+          })(),
+          callback: function(this: Scale<CoreScaleOptions>, tickValue: number | string, index: number, ticks: Tick[]) {
+            const value = Number(tickValue);
+            if (isBinary) {
+              return value === 1 ? 'ON' : value === 0 ? 'OFF' : '';
+            }
+            return tickValue;
+          }
         }
       },
     },
-  };
-
-  const chartData = {
-    datasets: [{
-      label,
-      data: sortedData.map(d => ({
-        x: (new Date(d.timestamp).getTime() - currentTime.getTime()) / (1000 * 60 * 60),
-        y: d.value
-      })),
-      backgroundColor: color,
-      borderColor: color,
-      pointStyle: 'circle',
-      pointRadius: 2,
-      pointHoverRadius: 5,
-      pointHoverBackgroundColor: color,
-      pointHoverBorderColor: color,
-      borderWidth: 2,
-      tension: 0.4,
-      fill: false
-    }]
   };
 
   return (

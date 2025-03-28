@@ -695,6 +695,7 @@ export default function Dashboard() {
                                        selectedPeriod === '12h' ? 12 :
                                        selectedPeriod === '6h' ? 6 : 24} // 24h par défaut
                               threshold={sensor.threshold?.value}
+                              isBinary={sensor.isBinary}
                             />
                           </>
                         ) : (
