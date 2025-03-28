@@ -161,11 +161,6 @@ export default function Dashboard() {
           })
         ])
 
-        console.log('Réponses API:', {
-          devicesStatus: devicesResponse.status,
-          userStatus: userResponse.status
-        });
-
         if (!devicesResponse.ok) throw new Error('Erreur lors de la récupération des devices')
         if (!userResponse.ok) throw new Error('Erreur lors de la récupération des données utilisateur')
 
@@ -173,11 +168,6 @@ export default function Dashboard() {
           devicesResponse.json(),
           userResponse.json()
         ])
-
-        console.log('Données reçues:', {
-          devices: devicesData,
-          user: userData
-        });
 
         // Récupérer les capteurs pour chaque device
         const devicesWithSensors = await Promise.all(
@@ -677,15 +667,6 @@ export default function Dashboard() {
                                 />
                               </div>
                             )}
-                            {/* Log avant le rendu */}
-                            {(() => {
-                              console.log('Données du capteur:', {
-                                name: sensor.name,
-                                historicalData: sensor.historicalData,
-                                type: sensor.type
-                              });
-                              return null;
-                            })()}
                             <SensorChart 
                               data={sensor.historicalData}
                               label={sensor.name}
