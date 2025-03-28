@@ -32,6 +32,12 @@ export async function GET(request: Request) {
     startDate.setHours(startDate.getHours() - startDate.getTimezoneOffset() / 60); // Ajuster pour UTC
     
     switch (period) {
+      case "1h":
+        startDate.setHours(startDate.getHours() - 1);
+        break;
+      case "3h":
+        startDate.setHours(startDate.getHours() - 3);
+        break;
       case "6h":
         startDate.setHours(startDate.getHours() - 6);
         break;
