@@ -107,6 +107,80 @@ export default function Dashboard() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  // Fonction pour sauvegarder les préférences
+  const savePreferences = async () => {
+    try {
+      const token = document.cookie
+        .split("; ")
+        .find(row => row.startsWith("auth-token="))
+        ?.split("=")[1]
+
+      if (!token) return
+
+      const response = await fetch('/api/user', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          dashboardPeriod: selectedPeriod,
+          dashboardViewMode: viewMode,
+          dashboardSensorType: selectedType,
+          dashboardAlertFilter: alertFilter
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la sauvegarde des préférences')
+      }
+    } catch (error) {
+      console.error('Erreur:', error)
+    }
+  }
+
+  // Effet pour charger les préférences au démarrage
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const token = document.cookie
+          .split("; ")
+          .find(row => row.startsWith("auth-token="))
+          ?.split("=")[1]
+
+        if (!token) return
+
+        const response = await fetch('/api/user', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error('Erreur lors du chargement des préférences')
+        }
+
+        const userData = await response.json()
+        setSelectedPeriod(userData.dashboardPeriod as '1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month')
+        setViewMode(userData.dashboardViewMode as 'grid' | 'list')
+        setSelectedType(userData.dashboardSensorType as SensorType | 'all')
+        setAlertFilter(userData.dashboardAlertFilter as 'all' | 'alert')
+        setUser(userData)
+      } catch (error) {
+        console.error('Erreur:', error)
+      }
+    }
+
+    loadPreferences()
+  }, [])
+
+  // Effet pour sauvegarder les préférences lors des changements
+  useEffect(() => {
+    if (user) {
+      savePreferences()
+    }
+  }, [selectedPeriod, viewMode, selectedType, alertFilter])
+
   useEffect(() => {
     const verifyAuth = async () => {
       try {

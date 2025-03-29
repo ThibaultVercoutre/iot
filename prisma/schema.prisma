@@ -16,6 +16,11 @@ model User {
   devices   Device[] // Relation avec les devices
   alertSensorId Int? // ID du capteur qui contrôle les alertes (bouton)
   alertsEnabled Boolean @default(true) // État des alertes
+  // Préférences dashboard
+  dashboardPeriod String @default("day") // Période sélectionnée (1h, 3h, 6h, 12h, day, week, month)
+  dashboardViewMode String @default("grid") // Mode d'affichage (grid, list)
+  dashboardSensorType String @default("all") // Type de capteur sélectionné
+  dashboardAlertFilter String @default("all") // Filtre d'alerte sélectionné
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
