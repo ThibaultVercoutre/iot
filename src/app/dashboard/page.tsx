@@ -105,6 +105,7 @@ export default function Dashboard() {
   const [selectedType, setSelectedType] = useState<SensorType | 'all'>('all')
   const [alertFilter, setAlertFilter] = useState<'all' | 'alert'>('all')
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
     const verifyAuth = async () => {
@@ -447,6 +448,28 @@ export default function Dashboard() {
                 <SelectItem value="alert">En alerte</SelectItem>
               </SelectContent>
             </Select>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+              className="h-9 w-9"
+            >
+              {viewMode === 'grid' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="3" y1="12" x2="21" y2="12"></line>
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="14" width="7" height="7"></rect>
+                  <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+              )}
+            </Button>
           </div>
         </div>
       </div>
@@ -458,7 +481,7 @@ export default function Dashboard() {
               <CardTitle className="text-xl mb-4">{device.name}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
                 {device.sensors.map((sensor) => {
                   const latestData = sensor.historicalData && sensor.historicalData.length > 0 ? sensor.historicalData[0] : null;
                   
@@ -629,60 +652,66 @@ export default function Dashboard() {
                       <CardContent>
                         {latestData ? (
                           <>
-                            <div 
-                              className={`text-4xl font-bold mb-2 ${
-                                user?.alertsEnabled && sensor.isInAlert ? 'text-red-500' : ''
-                              }`} 
-                              style={{ color: user?.alertsEnabled && sensor.isInAlert ? undefined : getSensorColor(sensor.type) }}
-                            >
-                              {formatValue(sensor, latestData.value)}
-                            </div>
-                            <div className="text-sm text-gray-500 mb-4">
-                              Dernière mise à jour: {new Date(latestData.timestamp).toLocaleDateString()} {new Date(latestData.timestamp).toLocaleTimeString()}
-                            </div>
-                            {!sensor.isBinary && (
-                              <div className="flex items-center gap-2 mb-4">
-                                <Label htmlFor={`threshold-${sensor.id}`} className="flex items-center gap-1">
-                                  <AlertCircle className="w-4 h-4" />
-                                  Seuil
-                                </Label>
-                                <Input
-                                  id={`threshold-${sensor.id}`}
-                                  type="number"
-                                  value={thresholdValues[sensor.id] ?? sensor.threshold?.value ?? ''}
-                                  onChange={(e) => {
-                                    setThresholdValues(prev => ({ ...prev, [sensor.id]: e.target.value }))
-                                  }}
-                                  onBlur={(e) => {
-                                    if (e.target.value) {
-                                      handleThresholdChange(sensor.id, e.target.value)
-                                    }
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.currentTarget.blur()
-                                    }
-                                  }}
-                                  className="w-24"
-                                  min="0"
-                                  step="0.1"
+                            <div className="flex flex-col gap-4">
+                              <div>
+                                <div 
+                                  className={`text-4xl font-bold mb-2 ${
+                                    user?.alertsEnabled && sensor.isInAlert ? 'text-red-500' : ''
+                                  }`} 
+                                  style={{ color: user?.alertsEnabled && sensor.isInAlert ? undefined : getSensorColor(sensor.type) }}
+                                >
+                                  {formatValue(sensor, latestData.value)}
+                                </div>
+                                <div className="text-sm text-gray-500 mb-4">
+                                  Dernière mise à jour: {new Date(latestData.timestamp).toLocaleDateString()} {new Date(latestData.timestamp).toLocaleTimeString()}
+                                </div>
+                                {!sensor.isBinary && (
+                                  <div className="flex items-center gap-2 mb-4">
+                                    <Label htmlFor={`threshold-${sensor.id}`} className="flex items-center gap-1">
+                                      <AlertCircle className="w-4 h-4" />
+                                      Seuil
+                                    </Label>
+                                    <Input
+                                      id={`threshold-${sensor.id}`}
+                                      type="number"
+                                      value={thresholdValues[sensor.id] ?? sensor.threshold?.value ?? ''}
+                                      onChange={(e) => {
+                                        setThresholdValues(prev => ({ ...prev, [sensor.id]: e.target.value }))
+                                      }}
+                                      onBlur={(e) => {
+                                        if (e.target.value) {
+                                          handleThresholdChange(sensor.id, e.target.value)
+                                        }
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          e.currentTarget.blur()
+                                        }
+                                      }}
+                                      className="w-24"
+                                      min="0"
+                                      step="0.1"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                              <div className={viewMode === 'list' ? 'h-[200px]' : ''}>
+                                <SensorChart 
+                                  data={sensor.historicalData}
+                                  label={sensor.name}
+                                  color={sensorColors[sensor.type]}
+                                  timeRange={selectedPeriod === 'week' ? 168 : // 7 jours * 24h
+                                           selectedPeriod === 'month' ? 720 : // 30 jours * 24h
+                                           selectedPeriod === '12h' ? 12 :
+                                           selectedPeriod === '6h' ? 6 :
+                                           selectedPeriod === '3h' ? 3 :
+                                           selectedPeriod === '1h' ? 1 :
+                                           24} // 24h par défaut (day)
+                                  threshold={sensor.threshold?.value}
+                                  isBinary={sensor.isBinary}
                                 />
                               </div>
-                            )}
-                            <SensorChart 
-                              data={sensor.historicalData}
-                              label={sensor.name}
-                              color={sensorColors[sensor.type]}
-                              timeRange={selectedPeriod === 'week' ? 168 : // 7 jours * 24h
-                                       selectedPeriod === 'month' ? 720 : // 30 jours * 24h
-                                       selectedPeriod === '12h' ? 12 :
-                                       selectedPeriod === '6h' ? 6 :
-                                       selectedPeriod === '3h' ? 3 :
-                                       selectedPeriod === '1h' ? 1 :
-                                       24} // 24h par défaut (day)
-                              threshold={sensor.threshold?.value}
-                              isBinary={sensor.isBinary}
-                            />
+                            </div>
                           </>
                         ) : (
                           <div className="text-gray-500">Aucune donnée disponible</div>
