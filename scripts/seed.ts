@@ -182,9 +182,9 @@ async function main() {
       })
     }
 
-    await prisma.sensorData.createMany({
-      data: values
-    })
+    // await prisma.sensorData.createMany({
+    //   data: values
+    // })
 
     console.log(`${values.length} valeurs créées pour ${sensor.name}`)
   }

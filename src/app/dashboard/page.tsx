@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SensorType, Sensor } from '@prisma/client'
@@ -108,7 +108,7 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Fonction pour sauvegarder les préférences
-  const savePreferences = async () => {
+  const savePreferences = useCallback(async () => {
     try {
       const token = document.cookie
         .split("; ")
@@ -137,7 +137,7 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Erreur:', error)
     }
-  }
+  }, [selectedPeriod, viewMode, selectedType, alertFilter])
 
   // Effet pour charger les préférences au démarrage
   useEffect(() => {
@@ -179,7 +179,7 @@ export default function Dashboard() {
     if (user) {
       savePreferences()
     }
-  }, [selectedPeriod, viewMode, selectedType, alertFilter])
+  }, [selectedPeriod, viewMode, selectedType, alertFilter, savePreferences, user])
 
   useEffect(() => {
     const verifyAuth = async () => {
