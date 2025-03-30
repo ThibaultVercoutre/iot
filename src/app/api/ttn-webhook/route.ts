@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { sendAlertEmail } from '@/lib/email';
 
 const prisma = new PrismaClient();
 
@@ -155,6 +156,15 @@ export async function POST(request: Request) {
             }
           });
           console.log(`Nouvelle alerte créée pour ${sensor.name}: ${value}`);
+
+          // Envoyer l'email d'alerte
+          await sendAlertEmail(
+            user.email,
+            sensor.name,
+            value,
+            null,
+            timestamp
+          );
         }
         // Ajouter la gestion de la fin d'alerte quand la valeur revient à 0
         else if (value === 0 && activeAlert) {
@@ -183,6 +193,15 @@ export async function POST(request: Request) {
             }
           });
           console.log(`Nouvelle alerte créée pour ${sensor.name}: ${value} >= ${thresholdValue}`);
+
+          // Envoyer l'email d'alerte
+          await sendAlertEmail(
+            user.email,
+            sensor.name,
+            value,
+            thresholdValue,
+            timestamp
+          );
         }
         // Cas où la valeur revient sous le seuil et il existe une alerte active
         else if (value < thresholdValue && activeAlert) {
