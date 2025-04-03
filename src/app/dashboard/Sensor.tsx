@@ -2,18 +2,11 @@
 
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { AlertCircle, Trash2, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import SensorChart from "@/components/SensorChart"
-import { 
-  SensorWithData, 
-  User, 
-  formatValue, 
-  getSensorColor 
-} from "@/types/sensors"
+import { SensorWithData, User, getSensorColor } from "@/types/sensors"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { SensorDatas } from "./SensorDatas"
 
 interface SensorProps {
   sensor: SensorWithData
@@ -107,66 +100,16 @@ export function Sensor({
       </CardHeader>
       <CardContent>
         {latestData ? (
-          <>
-            <div className="flex flex-col gap-4">
-              <div>
-                <div 
-                  className={`text-4xl font-bold mb-2 ${
-                    user?.alertsEnabled && sensor.isInAlert ? 'text-red-500' : ''
-                  }`} 
-                  style={{ color: user?.alertsEnabled && sensor.isInAlert ? undefined : getSensorColor(sensor.type) }}
-                >
-                  {formatValue(sensor, latestData.value)}
-                </div>
-                <div className="text-sm text-gray-500 mb-4">
-                  Dernière mise à jour: {new Date(latestData.timestamp).toLocaleDateString()} {new Date(latestData.timestamp).toLocaleTimeString()}
-                </div>
-                {!sensor.isBinary && (
-                  <div className="flex items-center gap-2 mb-4">
-                    <Label htmlFor={`threshold-${sensor.id}`} className="flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" />
-                      Seuil
-                    </Label>
-                    <Input
-                      id={`threshold-${sensor.id}`}
-                      type="number"
-                      value={thresholdValue}
-                      onChange={(e) => setThresholdValue(e.target.value)}
-                      onBlur={(e) => {
-                        if (e.target.value) {
-                          onThresholdChange(sensor.id, e.target.value)
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.currentTarget.blur()
-                        }
-                      }}
-                      className="w-24"
-                      min="0"
-                      step="0.1"
-                    />
-                  </div>
-                )}
-              </div>
-              <div className={viewMode === 'list' ? 'h-[200px]' : ''}>
-                <SensorChart 
-                  data={sensor.historicalData}
-                  label={sensor.name}
-                  color={getSensorColor(sensor.type)}
-                  timeRange={selectedPeriod === 'week' ? 168 : // 7 jours * 24h
-                           selectedPeriod === 'month' ? 720 : // 30 jours * 24h
-                           selectedPeriod === '12h' ? 12 :
-                           selectedPeriod === '6h' ? 6 :
-                           selectedPeriod === '3h' ? 3 :
-                           selectedPeriod === '1h' ? 1 :
-                           24} // 24h par défaut (day)
-                  threshold={sensor.threshold?.value}
-                  isBinary={sensor.isBinary}
-                />
-              </div>
-            </div>
-          </>
+          <SensorDatas
+            sensor={sensor}
+            latestData={latestData}
+            user={user}
+            thresholdValue={thresholdValue}
+            setThresholdValue={setThresholdValue}
+            onThresholdChange={onThresholdChange}
+            viewMode={viewMode}
+            selectedPeriod={selectedPeriod}
+          />
         ) : (
           <div className="text-gray-500">Aucune donnée disponible</div>
         )}
