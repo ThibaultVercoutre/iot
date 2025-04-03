@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation"
 import { SensorType, Sensor } from '@prisma/client'
 
 import { AddDeviceDialog } from "@/components/AddDeviceDialog"
-import { AlertStatus } from "./AlertStatus"
-import { ActiveAlerts } from "./ActiveAlerts"
-import { DashboardFilters } from "./DashboardFilters"
-import { Device } from "./Device"
+import { AlertStatus } from "../../components/dashboard/AlertStatus"
+import { ActiveAlerts } from "../../components/dashboard/ActiveAlerts"
+import { DashboardFilters } from "../../components/dashboard/DashboardFilters"
+import { Device } from "../../components/dashboard/Device"
 
 // Types pour les données des capteurs
 interface SensorData {

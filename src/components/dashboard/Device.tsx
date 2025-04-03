@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AddSensorDialog } from "@/components/AddSensorDialog"
-import { Sensor } from "@/app/dashboard/Sensor"
+import { Sensor } from "@/components/dashboard/Sensor"
 import { 
   Device as DeviceType, 
   SensorWithData, 

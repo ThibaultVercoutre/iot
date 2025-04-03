@@ -1,7 +1,7 @@
 import { AlertCircle } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import SensorChart from "@/app/dashboard/SensorChart"
+import SensorChart from "@/components/dashboard/SensorChart"
 import { formatValue, getSensorColor } from "@/lib/utils"
 import { SensorData, SensorWithData, User } from "@/types/sensors"
 
