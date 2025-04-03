@@ -40,19 +40,19 @@ interface Device {
 
 interface AddSensorDialogProps {
   onSensorAdded: () => void
+  deviceId: number
 }
 
-export function AddSensorDialog({ onSensorAdded }: AddSensorDialogProps) {
+export function AddSensorDialog({ onSensorAdded, deviceId }: AddSensorDialogProps) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [type, setType] = useState<SensorType>(SensorType.SOUND)
-  const [deviceId, setDeviceId] = useState<number | null>(null)
-  const [devices, setDevices] = useState<Device[]>([])
+  const [threshold, setThreshold] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name || !deviceId) return
+    if (!name) return
 
     setIsLoading(true)
     try {
@@ -62,6 +62,8 @@ export function AddSensorDialog({ onSensorAdded }: AddSensorDialogProps) {
         ?.split("=")[1]
 
       if (!token) return
+
+      const isBinary = type === SensorType.BUTTON || type === SensorType.VIBRATION
 
       const response = await fetch("/api/sensors", {
         method: "POST",
@@ -73,8 +75,7 @@ export function AddSensorDialog({ onSensorAdded }: AddSensorDialogProps) {
           name,
           type,
           deviceId,
-          uniqueId: generateShortId(),
-          isBinary: type === SensorType.BUTTON
+          isBinary,
         }),
       })
 
@@ -82,9 +83,29 @@ export function AddSensorDialog({ onSensorAdded }: AddSensorDialogProps) {
         throw new Error("Erreur lors de la création du capteur")
       }
 
+      const sensor = await response.json()
+
+      // Si le capteur n'est pas binaire et qu'un seuil est défini, créer le seuil
+      if (!isBinary && threshold) {
+        const thresholdResponse = await fetch(`/api/sensors/${sensor.id}/threshold`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            value: parseFloat(threshold)
+          }),
+        })
+
+        if (!thresholdResponse.ok) {
+          throw new Error("Erreur lors de la création du seuil")
+        }
+      }
+
       setName("")
       setType(SensorType.SOUND)
-      setDeviceId(null)
+      setThreshold("")
       setOpen(false)
       onSensorAdded()
     } catch (error) {
@@ -94,39 +115,8 @@ export function AddSensorDialog({ onSensorAdded }: AddSensorDialogProps) {
     }
   }
 
-  const fetchDevices = async () => {
-    try {
-      const token = document.cookie
-        .split("; ")
-        .find(row => row.startsWith("auth-token="))
-        ?.split("=")[1]
-
-      if (!token) return
-
-      const response = await fetch("/api/devices", {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error("Erreur lors de la récupération des devices")
-      }
-
-      const data = await response.json()
-      setDevices(data)
-    } catch (error) {
-      console.error("Erreur:", error)
-    }
-  }
-
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => {
-      setOpen(isOpen)
-      if (isOpen) {
-        fetchDevices()
-      }
-    }}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" className="h-full">
           <Plus className="mr-2 h-4 w-4" />
@@ -153,9 +143,9 @@ export function AddSensorDialog({ onSensorAdded }: AddSensorDialogProps) {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="type">Type de capteur</Label>
-              <Select value={type} onValueChange={(value: SensorType) => setType(value)}>
+              <Select value={type} onValueChange={(value) => setType(value as SensorType)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionnez un type" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={SensorType.SOUND}>Son</SelectItem>
@@ -164,27 +154,24 @@ export function AddSensorDialog({ onSensorAdded }: AddSensorDialogProps) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="device">Device</Label>
-              <Select 
-                value={deviceId?.toString() || ""} 
-                onValueChange={(value) => setDeviceId(parseInt(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionnez un device" />
-                </SelectTrigger>
-                <SelectContent>
-                  {devices.map((device) => (
-                    <SelectItem key={device.id} value={device.id.toString()}>
-                      {device.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {type === SensorType.SOUND && (
+              <div className="grid gap-2">
+                <Label htmlFor="threshold">Seuil d&apos;alerte</Label>
+                <Input
+                  id="threshold"
+                  type="number"
+                  value={threshold}
+                  onChange={(e) => setThreshold(e.target.value)}
+                  placeholder="Ex: 1450"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Une alerte sera déclenchée si la valeur dépasse ce seuil
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={isLoading || !name || !deviceId}>
+            <Button type="submit" disabled={isLoading || !name}>
               {isLoading ? "Création..." : "Créer"}
             </Button>
           </DialogFooter>

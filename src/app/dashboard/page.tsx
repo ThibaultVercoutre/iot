@@ -796,81 +796,83 @@ export default function Dashboard() {
                     </Card>
                   )
                 })}
-                <AddSensorDialog onSensorAdded={() => {
-                  // Rafraîchir les données après l'ajout d'un capteur
-                  const fetchData = async () => {
-                    try {
-                      const token = document.cookie
-                        .split("; ")
-                        .find(row => row.startsWith("auth-token="))
-                        ?.split("=")[1]
+                <AddSensorDialog 
+                  deviceId={device.id}
+                  onSensorAdded={() => {
+                    // Rafraîchir les données après l'ajout d'un capteur
+                    const fetchData = async () => {
+                      try {
+                        const token = document.cookie
+                          .split("; ")
+                          .find(row => row.startsWith("auth-token="))
+                          ?.split("=")[1]
 
-                      if (!token) return
+                        if (!token) return
 
-                      const devicesResponse = await fetch('/api/devices', {
-                        headers: {
-                          "Authorization": `Bearer ${token}`
-                        }
-                      })
-                      if (devicesResponse.ok) {
-                        const devicesData = await devicesResponse.json()
-                        
-                        // Récupérer les capteurs pour chaque device
-                        const devicesWithSensors = await Promise.all(
-                          devicesData.map(async (device: { id: number, name: string }) => {
-                            const sensorsResponse = await fetch(`/api/sensors?period=${selectedPeriod}`, {
-                              headers: {
-                                "Authorization": `Bearer ${token}`
-                              }
-                            })
-
-                            if (!sensorsResponse.ok) throw new Error('Erreur lors de la récupération des capteurs')
-
-                            const sensorsData = await sensorsResponse.json()
-                            const deviceSensors = sensorsData.filter((sensor: SensorWithData) => sensor.deviceId === device.id)
-
-                            // Vérifier les capteurs qui ont une alerte active
-                            const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
-                              const latestData = sensor.historicalData[0];
-                              let isInAlert = false;
-
-                              if (latestData) {
-                                if (sensor.isBinary) {
-                                  // Pour les capteurs binaires, en alerte si valeur = 1
-                                  isInAlert = latestData.value === 1;
-                                } else if (sensor.threshold) {
-                                  // Pour les capteurs numériques, en alerte si au-dessus du seuil
-                                  isInAlert = latestData.value >= sensor.threshold.value;
+                        const devicesResponse = await fetch('/api/devices', {
+                          headers: {
+                            "Authorization": `Bearer ${token}`
+                          }
+                        })
+                        if (devicesResponse.ok) {
+                          const devicesData = await devicesResponse.json()
+                          
+                          // Récupérer les capteurs pour chaque device
+                          const devicesWithSensors = await Promise.all(
+                            devicesData.map(async (device: { id: number, name: string }) => {
+                              const sensorsResponse = await fetch(`/api/sensors?period=${selectedPeriod}`, {
+                                headers: {
+                                  "Authorization": `Bearer ${token}`
                                 }
-                              }
+                              })
+
+                              if (!sensorsResponse.ok) throw new Error('Erreur lors de la récupération des capteurs')
+
+                              const sensorsData = await sensorsResponse.json()
+                              const deviceSensors = sensorsData.filter((sensor: SensorWithData) => sensor.deviceId === device.id)
+
+                              // Vérifier les capteurs qui ont une alerte active
+                              const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
+                                const latestData = sensor.historicalData[0];
+                                let isInAlert = false;
+
+                                if (latestData) {
+                                  if (sensor.isBinary) {
+                                    // Pour les capteurs binaires, en alerte si valeur = 1
+                                    isInAlert = latestData.value === 1;
+                                  } else if (sensor.threshold) {
+                                    // Pour les capteurs numériques, en alerte si au-dessus du seuil
+                                    isInAlert = latestData.value >= sensor.threshold.value;
+                                  }
+                                }
+
+                                return {
+                                  ...sensor,
+                                  isInAlert
+                                };
+                              });
 
                               return {
-                                ...sensor,
-                                isInAlert
-                              };
-                            });
+                                ...device,
+                                sensors: sensorsWithAlertStatus
+                              }
+                            })
+                          )
 
-                            return {
-                              ...device,
-                              sensors: sensorsWithAlertStatus
-                            }
-                          })
-                        )
-
-                        setDevices(devicesWithSensors)
-                        
-                        // Filtrer les capteurs en alerte
-                        const alertSensors = devicesWithSensors.flatMap(device => 
-                          device.sensors.filter((s: SensorWithData) => s.isInAlert)
-                        )
-                        setSensorsInAlert(alertSensors)
+                          setDevices(devicesWithSensors)
+                          
+                          // Filtrer les capteurs en alerte
+                          const alertSensors = devicesWithSensors.flatMap(device => 
+                            device.sensors.filter((s: SensorWithData) => s.isInAlert)
+                          )
+                          setSensorsInAlert(alertSensors)
+                        }
+                      } catch (error) {
+                        console.error('Erreur lors de la récupération des données:', error)
                       }
-                    } catch (error) {
-                      console.error('Erreur lors de la récupération des données:', error)
                     }
-                  }
-                  fetchData()
-                }} />
+                    fetchData()
+                  }} />
               </div>
             </CardContent>
           </Card>
