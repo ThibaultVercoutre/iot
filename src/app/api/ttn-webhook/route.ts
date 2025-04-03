@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { queueAlertEmail } from '@/lib/email';
+import { queueAlertEmail, SensorAlertInfo } from '@/lib/email';
 
 const prisma = new PrismaClient();
 
@@ -237,7 +237,7 @@ export async function POST(request: Request) {
 }
 
 // Fonction pour envoyer directement un email avec plusieurs capteurs en alerte
-async function sendDirectAlertEmail(email: string, alerts: any[]) {
+async function sendDirectAlertEmail(email: string, alerts: SensorAlertInfo[]) {
   try {
     // Déléguer à la fonction existante en envoyant chaque alerte individuellement
     // pour qu'elles soient regroupées par le système de file d'attente
