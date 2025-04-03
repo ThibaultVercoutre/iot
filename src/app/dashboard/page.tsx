@@ -59,6 +59,27 @@ export default function Dashboard() {
   const [alertFilter, setAlertFilter] = useState<'all' | 'alert'>('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
+  // Restaurer les filtres depuis le localStorage
+  useEffect(() => {
+    const savedPeriod = localStorage.getItem('dashboardPeriod')
+    const savedType = localStorage.getItem('dashboardType')
+    const savedAlertFilter = localStorage.getItem('dashboardAlertFilter')
+    const savedViewMode = localStorage.getItem('dashboardViewMode')
+
+    if (savedPeriod) setSelectedPeriod(savedPeriod as any)
+    if (savedType) setSelectedType(savedType as any)
+    if (savedAlertFilter) setAlertFilter(savedAlertFilter as any)
+    if (savedViewMode) setViewMode(savedViewMode as any)
+  }, [])
+
+  // Sauvegarder les filtres dans le localStorage
+  useEffect(() => {
+    localStorage.setItem('dashboardPeriod', selectedPeriod)
+    localStorage.setItem('dashboardType', selectedType)
+    localStorage.setItem('dashboardAlertFilter', alertFilter)
+    localStorage.setItem('dashboardViewMode', viewMode)
+  }, [selectedPeriod, selectedType, alertFilter, viewMode])
+
   // Filtrer les devices en fonction des filtres sélectionnés
   const filteredDevices = devices.filter(device => {
     // Filtrer par type de capteur
