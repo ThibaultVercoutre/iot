@@ -125,7 +125,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    console.log('Données reçues:', body);
+
     const { name, type, isBinary, deviceId, threshold } = sensorSchema.parse(body);
+    console.log('Données validées:', { name, type, isBinary, deviceId, threshold });
 
     // Récupérer l'utilisateur à partir du token
     const token = request.headers.get("Authorization")?.split(" ")[1];
@@ -178,10 +181,10 @@ export async function POST(request: Request) {
         isBinary,
         uniqueId,
         deviceId,
-        ...(threshold && type === "SOUND" ? {
+        ...(type === "SOUND" ? {
           threshold: {
             create: {
-              value: threshold
+              value: threshold || 80 // Valeur par défaut si non spécifiée
             }
           }
         } : {})
@@ -191,17 +194,19 @@ export async function POST(request: Request) {
       }
     });
 
+    console.log('Capteur créé avec succès:', sensor);
     return NextResponse.json(sensor);
   } catch (error) {
-    console.error("Erreur lors de la création du capteur:", error);
+    console.error("Erreur détaillée:", error);
     if (error instanceof z.ZodError) {
+      console.error("Erreur de validation:", error.errors);
       return NextResponse.json(
         { error: "Données invalides", details: error.errors },
         { status: 400 }
       );
     }
     return NextResponse.json(
-      { error: "Erreur lors de la création du capteur" },
+      { error: "Erreur lors de la création du capteur", details: error },
       { status: 500 }
     );
   }

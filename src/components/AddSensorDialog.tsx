@@ -51,6 +51,14 @@ export function AddSensorDialog({ onSensorAdded, deviceId }: AddSensorDialogProp
       const isBinary = type === SensorType.BUTTON || type === SensorType.VIBRATION
       const thresholdValue = type === SensorType.SOUND ? parseFloat(threshold) || 80 : null
 
+      console.log('Envoi de la requête avec:', {
+        name,
+        type,
+        deviceId,
+        isBinary,
+        threshold: thresholdValue
+      })
+
       const response = await fetch("/api/sensors", {
         method: "POST",
         headers: {
@@ -67,39 +75,17 @@ export function AddSensorDialog({ onSensorAdded, deviceId }: AddSensorDialogProp
       })
 
       if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Erreur serveur:', errorData)
         throw new Error("Erreur lors de la création du capteur")
       }
 
       const sensor = await response.json()
       console.log('Capteur créé:', sensor)
 
-      // Si c'est un capteur de son et qu'un seuil est défini, créer le seuil
-      if (type === SensorType.SOUND && threshold) {
-        console.log('Création du seuil pour le capteur de son:', threshold)
-        const thresholdResponse = await fetch(`/api/sensors/${sensor.id}/threshold`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            value: parseFloat(threshold)
-          }),
-        })
-
-        if (!thresholdResponse.ok) {
-          const error = await thresholdResponse.json()
-          console.error('Erreur lors de la création du seuil:', error)
-          throw new Error("Erreur lors de la création du seuil")
-        }
-
-        const thresholdData = await thresholdResponse.json()
-        console.log('Seuil créé:', thresholdData)
-      }
-
       setName("")
       setType(SensorType.SOUND)
-      setThreshold("")
+      setThreshold("80")
       setOpen(false)
       onSensorAdded()
     } catch (error) {
