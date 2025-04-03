@@ -58,7 +58,6 @@ export default function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<'1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month'>('day')
   const [selectedType, setSelectedType] = useState<SensorType | 'all'>('all')
   const [alertFilter, setAlertFilter] = useState<'all' | 'alert'>('all')
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Fonction pour sauvegarder les préférences
@@ -264,109 +263,6 @@ export default function Dashboard() {
     // Nettoyer l'intervalle lors du démontage du composant
     return () => clearInterval(interval)
   }, [selectedPeriod])
-
-  const handleThresholdChange = async (sensorId: number, value: string) => {
-    try {
-      const numValue = parseFloat(value)
-      if (isNaN(numValue)) {
-        console.error('Valeur de seuil invalide')
-        return
-      }
-      
-      const token = document.cookie
-        .split("; ")
-        .find(row => row.startsWith("auth-token="))
-        ?.split("=")[1]
-
-      if (!token) return
-
-      const response = await fetch(`/api/sensors/${sensorId}/threshold`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ value: numValue }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null)
-        throw new Error(errorData?.error || 'Erreur lors de la mise à jour du seuil')
-      }
-
-      // Rafraîchir les données
-      const devicesResponse = await fetch('/api/devices', {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      })
-      if (devicesResponse.ok) {
-        const devicesData = await devicesResponse.json()
-        
-        // Récupérer les capteurs pour chaque device
-        const devicesWithSensors = await Promise.all(
-          devicesData.map(async (device: { id: number, name: string }) => {
-            const sensorsResponse = await fetch(`/api/sensors?period=${selectedPeriod}`, {
-              headers: {
-                "Authorization": `Bearer ${token}`
-              }
-            })
-
-            if (!sensorsResponse.ok) throw new Error('Erreur lors de la récupération des capteurs')
-
-            const sensorsData = await sensorsResponse.json()
-            const deviceSensors = sensorsData.filter((sensor: SensorWithData) => sensor.deviceId === device.id)
-
-            // Vérifier les capteurs qui ont une alerte active
-            const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
-              const latestData = sensor.historicalData[0];
-              let isInAlert = false;
-
-              if (latestData) {
-                if (sensor.isBinary) {
-                  // Pour les capteurs binaires, en alerte si valeur = 1
-                  isInAlert = latestData.value === 1;
-                } else if (sensor.threshold) {
-                  // Pour les capteurs numériques, en alerte si au-dessus du seuil
-                  isInAlert = latestData.value >= sensor.threshold.value;
-                }
-              }
-
-              return {
-                ...sensor,
-                isInAlert
-              };
-            });
-
-            return {
-              ...device,
-              sensors: sensorsWithAlertStatus
-            }
-          })
-        )
-
-        setDevices(devicesWithSensors)
-        
-        // Filtrer les capteurs en alerte
-        const alertSensors = devicesWithSensors.flatMap(device => 
-          device.sensors.filter((s: SensorWithData) => s.isInAlert)
-        )
-        setSensorsInAlert(alertSensors)
-      }
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour du seuil:', error)
-    }
-  }
-
-  const handleCopyId = async (id: string) => {
-    try {
-      await navigator.clipboard.writeText(id);
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 2000);
-    } catch (err) {
-      console.error('Erreur lors de la copie:', err);
-    }
-  };
 
   // Filtrer les capteurs selon les critères
   const filteredDevices = devices.map(device => ({
