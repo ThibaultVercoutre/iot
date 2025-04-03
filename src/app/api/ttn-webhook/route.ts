@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { SensorAlertInfo, sendMultipleAlertsEmail } from '@/lib/email';
+import { sendMultipleAlertsEmail } from '@/lib/email';
 
 const prisma = new PrismaClient();
 
