@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library"
 import { z } from "zod"
 import jwt from "jsonwebtoken"
 
@@ -52,6 +53,25 @@ export async function POST(request: Request) {
     }
     console.log("Token décodé:", decoded)
 
+    // Vérifier si le device existe déjà
+    const existingDevice = await prisma.device.findFirst({
+      where: {
+        joinEui,
+        devEui,
+      },
+    })
+
+    if (existingDevice) {
+      console.log("Device déjà existant:", existingDevice)
+      return NextResponse.json(
+        { 
+          error: "Un device avec ce Join EUI et Dev EUI existe déjà",
+          details: "La combinaison Join EUI / Dev EUI doit être unique"
+        },
+        { status: 409 }
+      )
+    }
+
     const device = await prisma.device.create({
       data: {
         name,
@@ -63,13 +83,22 @@ export async function POST(request: Request) {
     console.log("Device créé:", device)
 
     return NextResponse.json(device)
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Erreur détaillée lors de la création du device:", error)
     if (error instanceof z.ZodError) {
       console.error("Erreur de validation:", error.errors)
       return NextResponse.json(
         { error: "Données invalides", details: error.errors },
         { status: 400 }
+      )
+    }
+    if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
+      return NextResponse.json(
+        { 
+          error: "Un device avec ce Join EUI et Dev EUI existe déjà",
+          details: "La combinaison Join EUI / Dev EUI doit être unique"
+        },
+        { status: 409 }
       )
     }
     return NextResponse.json(
