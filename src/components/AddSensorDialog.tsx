@@ -23,21 +23,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-// Fonction pour générer un ID unique court
-function generateShortId() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < 8; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
-interface Device {
-  id: number
-  name: string
-}
-
 interface AddSensorDialogProps {
   onSensorAdded: () => void
   deviceId: number
