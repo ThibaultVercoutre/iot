@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { SensorChart } from "@/components/SensorChart"
 import { formatValue, getSensorColor } from "@/lib/utils"
 
+
 interface SensorDatasProps {
   sensor: any
   latestData: any
