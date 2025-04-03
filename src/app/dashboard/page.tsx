@@ -66,10 +66,10 @@ export default function Dashboard() {
     const savedAlertFilter = localStorage.getItem('dashboardAlertFilter')
     const savedViewMode = localStorage.getItem('dashboardViewMode')
 
-    if (savedPeriod) setSelectedPeriod(savedPeriod as any)
-    if (savedType) setSelectedType(savedType as any)
-    if (savedAlertFilter) setAlertFilter(savedAlertFilter as any)
-    if (savedViewMode) setViewMode(savedViewMode as any)
+    if (savedPeriod) setSelectedPeriod(savedPeriod as '1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month')
+    if (savedType) setSelectedType(savedType as SensorType | 'all')
+    if (savedAlertFilter) setAlertFilter(savedAlertFilter as 'all' | 'alert')
+    if (savedViewMode) setViewMode(savedViewMode as 'grid' | 'list')
   }, [])
 
   // Sauvegarder les filtres dans le localStorage
