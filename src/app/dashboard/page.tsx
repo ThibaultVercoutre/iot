@@ -234,7 +234,14 @@ export default function Dashboard() {
       }
     }
 
+    // Exécuter fetchData immédiatement
     fetchData()
+
+    // Configurer l'intervalle pour exécuter fetchData toutes les secondes
+    const interval = setInterval(fetchData, 1000)
+
+    // Nettoyer l'intervalle lors du démontage du composant
+    return () => clearInterval(interval)
   }, [selectedPeriod])
 
   if (isLoading) {
