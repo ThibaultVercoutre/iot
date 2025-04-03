@@ -28,6 +28,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { AlertStatus } from "./AlertStatus"
+import { ActiveAlerts } from "./ActiveAlerts"
+import { DashboardFilters } from "./DashboardFilters"
 
 // Types pour les données des capteurs
 interface SensorData {
@@ -439,20 +442,7 @@ export default function Dashboard() {
     <div className="container mx-auto p-4">
       {user && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
-          <div className={`p-4 rounded-lg w-full sm:flex-1 ${
-            user.alertsEnabled 
-              ? 'bg-green-100 text-green-800 border border-green-200' 
-              : 'bg-orange-100 text-orange-800 border border-orange-200'
-          }`}>
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5" />
-              <span className="font-medium">
-                {user.alertsEnabled 
-                  ? 'Les alertes sont actives' 
-                  : 'Les alertes sont suspendues'}
-              </span>
-            </div>
-          </div>
+          <AlertStatus alertsEnabled={user.alertsEnabled} />
           
           <Link href="/dashboard/alerts" className="w-full sm:w-auto">
             <Button className="w-full sm:w-auto">
@@ -464,99 +454,22 @@ export default function Dashboard() {
       )}
       
       {user && user.alertsEnabled && sensorsInAlert.length > 0 && (
-        <div className="mb-6 p-4 rounded-lg bg-red-100 text-red-800 border border-red-200">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5" />
-            <span className="font-medium">
-              Alerte ! {sensorsInAlert.length} capteur(s) en état d&apos;alerte
-            </span>
-          </div>
-          <ul className="mt-2 pl-6 list-disc">
-            {sensorsInAlert.map(sensor => (
-              <li key={sensor.id}>
-                {`${sensor.name} - Valeur actuelle: ${formatValue(sensor, sensor.historicalData[0]?.value || 0)}`}
-                {!sensor.isBinary && sensor.threshold && ` (Seuil: ${sensor.threshold.value} ${sensor.type === SensorType.SOUND ? 'dB' : ''})`}
-                {sensor.isBinary && ' (Détection d\'activité)'}
-                {sensor.alertLogs[0] && (
-                  <span className="text-red-600 ml-2">
-                    {`(En alerte depuis le ${formatDateTime(sensor.alertLogs[0].startData.timestamp)} - Valeur déclenchement: ${formatValue(sensor, sensor.alertLogs[0].startData.value)})`}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <ActiveAlerts sensorsInAlert={sensorsInAlert} />
       )}
       
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Tableau de bord des capteurs</h1>
         
-        <div className="flex flex-wrap gap-4 w-full sm:w-auto">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4" />
-            <Select value={selectedPeriod} onValueChange={(value: '1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month') => setSelectedPeriod(value)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Sélectionner une période" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1h">1 heure</SelectItem>
-                <SelectItem value="3h">3 heures</SelectItem>
-                <SelectItem value="6h">6 heures</SelectItem>
-                <SelectItem value="12h">12 heures</SelectItem>
-                <SelectItem value="day">24 heures</SelectItem>
-                <SelectItem value="week">1 semaine</SelectItem>
-                <SelectItem value="month">1 mois</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4" />
-            <Select value={selectedType} onValueChange={(value: SensorType | 'all') => setSelectedType(value)}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
-                <SelectItem value={SensorType.SOUND}>Son</SelectItem>
-                <SelectItem value={SensorType.VIBRATION}>Vibration</SelectItem>
-                <SelectItem value={SensorType.BUTTON}>Bouton</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={alertFilter} onValueChange={(value: 'all' | 'alert') => setAlertFilter(value)}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="État" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
-                <SelectItem value="alert">En alerte</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-              className="h-9 w-9"
-            >
-              {viewMode === 'grid' ? (
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="3" y1="12" x2="21" y2="12"></line>
-                  <line x1="3" y1="6" x2="21" y2="6"></line>
-                  <line x1="3" y1="18" x2="21" y2="18"></line>
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="7" height="7"></rect>
-                  <rect x="14" y="3" width="7" height="7"></rect>
-                  <rect x="14" y="14" width="7" height="7"></rect>
-                  <rect x="3" y="14" width="7" height="7"></rect>
-                </svg>
-              )}
-            </Button>
-          </div>
-        </div>
+        <DashboardFilters
+          selectedPeriod={selectedPeriod}
+          selectedType={selectedType}
+          alertFilter={alertFilter}
+          viewMode={viewMode}
+          onPeriodChange={setSelectedPeriod}
+          onTypeChange={setSelectedType}
+          onAlertFilterChange={setAlertFilter}
+          onViewModeChange={setViewMode}
+        />
       </div>
       
       <div className="grid grid-cols-1 gap-6">
