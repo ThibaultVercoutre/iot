@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { queueAlertEmail, SensorAlertInfo } from '@/lib/email';
+import { SensorAlertInfo, sendMultipleAlertsEmail } from '@/lib/email';
 
 const prisma = new PrismaClient();
 
@@ -218,8 +218,8 @@ export async function POST(request: Request) {
     // Si des alertes ont été déclenchées, envoyer un email groupé
     if (newAlerts.length > 0) {
       console.log(`Envoi d'un email pour ${newAlerts.length} capteurs en alerte`);
-      // Envoi direct sans utiliser queueAlertEmail pour chaque capteur
-      await sendDirectAlertEmail(user.email, newAlerts);
+      // Envoi direct de toutes les alertes en un seul email
+      await sendMultipleAlertsEmail(user.email, newAlerts);
     }
 
     return NextResponse.json({ 
@@ -233,24 +233,5 @@ export async function POST(request: Request) {
       error: 'Erreur lors du traitement des données',
       details: error instanceof Error ? error.message : 'Erreur inconnue'
     }, { status: 500 });
-  }
-}
-
-// Fonction pour envoyer directement un email avec plusieurs capteurs en alerte
-async function sendDirectAlertEmail(email: string, alerts: SensorAlertInfo[]) {
-  try {
-    // Déléguer à la fonction existante en envoyant chaque alerte individuellement
-    // pour qu'elles soient regroupées par le système de file d'attente
-    for (const alert of alerts) {
-      await queueAlertEmail(
-        email,
-        alert.sensorName,
-        alert.value,
-        alert.thresholdValue,
-        alert.timestamp
-      );
-    }
-  } catch (error) {
-    console.error('Erreur lors de l\'envoi direct d\'alertes groupées:', error);
   }
 } 

@@ -229,4 +229,74 @@ export async function sendAlertEmail(
 ) {
   // Déléguer à la nouvelle fonction de file d'attente
   await queueAlertEmail(to, sensorName, value, thresholdValue, timestamp);
+}
+
+/**
+ * Envoie directement un email contenant plusieurs alertes
+ * Cette fonction ne passe pas par la file d'attente et envoie immédiatement
+ */
+export async function sendMultipleAlertsEmail(
+  to: string,
+  alerts: SensorAlertInfo[]
+) {
+  if (!alerts.length) return;
+  
+  const validEmail = getValidEmailOrFallback(to);
+  
+  try {
+    const alertCount = alerts.length;
+    const alertsHtml = alerts.map(alert => {
+      const formattedValue = alert.thresholdValue !== null 
+        ? `${alert.value} (Seuil: ${alert.thresholdValue})`
+        : alert.value.toString();
+        
+      return `
+        <tr>
+          <td style="padding: 8px; border: 1px solid #ddd;">${alert.sensorName}</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${formattedValue}</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${alert.timestamp.toLocaleString('fr-FR')}</td>
+        </tr>
+      `;
+    }).join('');
+    
+    const mailOptions = {
+      from: `"Système d'Alertes" <${smtpConfig.user}>`,
+      to: validEmail,
+      subject: `[ALERTE] ${alertCount} capteur${alertCount > 1 ? 's' : ''} en alerte`,
+      html: `
+        <h2>${alertCount} capteur${alertCount > 1 ? 's ont' : ' a'} déclenché une alerte</h2>
+        <p>Les capteurs suivants ont déclenché des alertes :</p>
+        
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <thead>
+            <tr style="background-color: #f2f2f2;">
+              <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Capteur</th>
+              <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Valeur</th>
+              <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Date et heure</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${alertsHtml}
+          </tbody>
+        </table>
+        
+        <p>Connectez-vous à votre tableau de bord pour plus de détails : <a href="https://dash.web-gine.fr/dashboard">https://dash.web-gine.fr/dashboard</a></p>
+      `,
+    };
+
+    console.log(`Envoi direct d'un email à ${validEmail} pour ${alertCount} capteur(s)`);
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Email d'alerte groupé envoyé à ${validEmail}:`, info.response);
+    
+    // Mémoriser ces alertes comme envoyées pour la déduplication
+    for (const alert of alerts) {
+      const alertKey = `${validEmail}:${alert.sensorName}`;
+      sentAlerts.set(alertKey, Date.now());
+    }
+    
+    return true;
+  } catch (error) {
+    console.error(`Erreur lors de l'envoi de l'email groupé à ${validEmail}:`, error);
+    return false;
+  }
 } 
