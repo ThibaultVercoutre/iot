@@ -15,11 +15,9 @@ export function formatValue(sensor: Sensor, value: number): string {
 
 export function getSensorColor(type: string): string {
   const colors: { [key: string]: string } = {
-    temperature: '#FF6B6B',
-    humidity: '#4ECDC4',
-    pressure: '#45B7D1',
-    light: '#FFD166',
-    motion: '#96CEB4',
+    SOUND: '#FF6B6B',
+    VIBRATION: '#4ECDC4', 
+    BUTTON: '#FFD166',
     default: '#6C757D'
   }
   return colors[type] || colors.default
