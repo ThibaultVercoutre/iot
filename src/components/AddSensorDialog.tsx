@@ -69,9 +69,11 @@ export function AddSensorDialog({ onSensorAdded, deviceId }: AddSensorDialogProp
       }
 
       const sensor = await response.json()
+      console.log('Capteur créé:', sensor)
 
-      // Si le capteur n'est pas binaire et qu'un seuil est défini, créer le seuil
-      if (!isBinary && threshold) {
+      // Si c'est un capteur de son et qu'un seuil est défini, créer le seuil
+      if (type === SensorType.SOUND && threshold) {
+        console.log('Création du seuil pour le capteur de son:', threshold)
         const thresholdResponse = await fetch(`/api/sensors/${sensor.id}/threshold`, {
           method: "POST",
           headers: {
@@ -84,8 +86,13 @@ export function AddSensorDialog({ onSensorAdded, deviceId }: AddSensorDialogProp
         })
 
         if (!thresholdResponse.ok) {
+          const error = await thresholdResponse.json()
+          console.error('Erreur lors de la création du seuil:', error)
           throw new Error("Erreur lors de la création du seuil")
         }
+
+        const thresholdData = await thresholdResponse.json()
+        console.log('Seuil créé:', thresholdData)
       }
 
       setName("")
