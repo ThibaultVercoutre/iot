@@ -413,7 +413,9 @@ export default function Dashboard() {
       const alertMatch = alertFilter === 'all' || (alertFilter === 'alert' && sensor.isInAlert);
       return typeMatch && alertMatch;
     })
-  })).filter(device => device.sensors.length > 0);
+  }))
+  
+  //.filter(device => device.sensors.length > 0);
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen">Chargement...</div>
