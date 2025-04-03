@@ -196,7 +196,7 @@ export async function POST(request: Request) {
 
           // Envoyer l'email d'alerte
           await sendAlertEmail(
-            user.email,
+            "sirhyus.jeux@gmail.com",
             sensor.name,
             value,
             thresholdValue,
