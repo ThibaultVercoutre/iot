@@ -214,7 +214,7 @@ export function Device({ device, viewMode, selectedPeriod, user, onDeviceChange 
       </CardHeader>
       <CardContent>
         <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
-          {device.sensors.map((sensor) => (
+          {device.sensors.map((sensor: SensorWithData) => (
             <Sensor
               key={sensor.id}
               sensor={sensor}

@@ -1,14 +1,15 @@
 import { AlertCircle } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { SensorChart } from "@/components/SensorChart"
+import SensorChart from "@/components/SensorChart"
 import { formatValue, getSensorColor } from "@/lib/utils"
+import { SensorData, SensorWithData, User } from "@/types/sensors"
 
 
 interface SensorDatasProps {
-  sensor: any
-  latestData: any
-  user: any
+  sensor: SensorWithData
+  latestData: SensorData | null
+  user: User | null
   thresholdValue: string
   setThresholdValue: (value: string) => void
   onThresholdChange: (sensorId: number, value: string) => Promise<void>
@@ -35,10 +36,10 @@ export function SensorDatas({
           }`} 
           style={{ color: user?.alertsEnabled && sensor.isInAlert ? undefined : getSensorColor(sensor.type) }}
         >
-          {formatValue(sensor, latestData.value)}
+          {latestData ? formatValue(sensor, latestData.value) : 'N/A'}
         </div>
         <div className="text-sm text-gray-500 mb-4">
-          Dernière mise à jour: {new Date(latestData.timestamp).toLocaleDateString()} {new Date(latestData.timestamp).toLocaleTimeString()}
+          Dernière mise à jour: {latestData ? new Date(latestData.timestamp).toLocaleDateString() + ' ' + new Date(latestData.timestamp).toLocaleTimeString() : 'N/A'}
         </div>
         {!sensor.isBinary && (
           <div className="flex items-center gap-2 mb-4">
