@@ -19,8 +19,6 @@ interface DeviceProps {
 }
 
 export function Device({ device, viewMode, selectedPeriod, user, onDeviceChange }: DeviceProps) {
-  const [thresholdValues, setThresholdValues] = useState<{ [key: number]: string }>({})
-
   const handleThresholdChange = async (sensorId: number, value: string) => {
     try {
       const numValue = parseFloat(value)
