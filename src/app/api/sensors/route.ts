@@ -20,6 +20,7 @@ const sensorSchema = z.object({
   type: z.enum(["SOUND", "VIBRATION", "BUTTON"]),
   isBinary: z.boolean(),
   deviceId: z.number().int().positive("Le device est requis"),
+  threshold: z.number().nullable(),
 });
 
 export async function GET(request: Request) {
@@ -124,7 +125,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, type, isBinary, deviceId } = sensorSchema.parse(body);
+    const { name, type, isBinary, deviceId, threshold } = sensorSchema.parse(body);
 
     // Récupérer l'utilisateur à partir du token
     const token = request.headers.get("Authorization")?.split(" ")[1];
@@ -176,8 +177,18 @@ export async function POST(request: Request) {
         type,
         isBinary,
         uniqueId,
-        deviceId
+        deviceId,
+        ...(threshold && type === "SOUND" ? {
+          threshold: {
+            create: {
+              value: threshold
+            }
+          }
+        } : {})
       },
+      include: {
+        threshold: true
+      }
     });
 
     return NextResponse.json(sensor);

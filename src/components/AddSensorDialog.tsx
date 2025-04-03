@@ -32,7 +32,7 @@ export function AddSensorDialog({ onSensorAdded, deviceId }: AddSensorDialogProp
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [type, setType] = useState<SensorType>(SensorType.SOUND)
-  const [threshold, setThreshold] = useState<string>("")
+  const [threshold, setThreshold] = useState<string>("80")
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,6 +49,7 @@ export function AddSensorDialog({ onSensorAdded, deviceId }: AddSensorDialogProp
       if (!token) return
 
       const isBinary = type === SensorType.BUTTON || type === SensorType.VIBRATION
+      const thresholdValue = type === SensorType.SOUND ? parseFloat(threshold) || 80 : null
 
       const response = await fetch("/api/sensors", {
         method: "POST",
@@ -61,6 +62,7 @@ export function AddSensorDialog({ onSensorAdded, deviceId }: AddSensorDialogProp
           type,
           deviceId,
           isBinary,
+          threshold: thresholdValue
         }),
       })
 
