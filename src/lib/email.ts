@@ -29,6 +29,33 @@ transporter.verify(function(error) {
   }
 });
 
+// Email de secours en cas d'email invalide
+const FALLBACK_EMAIL = 'sirhyus.jeux@gmail.com';
+
+// Fonction pour vérifier si un email semble valide
+function isValidEmail(email: string): boolean {
+  if (!email) return false;
+  
+  // Vérification de base par regex
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) return false;
+  
+  // Domaines connus pour ne pas accepter d'emails
+  const invalidDomains = ['example.com', 'test.com', 'localhost'];
+  const domain = email.split('@')[1].toLowerCase();
+  
+  return !invalidDomains.includes(domain);
+}
+
+// Fonction pour obtenir l'email destinataire valide
+function getValidEmailOrFallback(email: string): string {
+  if (isValidEmail(email)) {
+    return email;
+  }
+  console.warn(`Email invalide: "${email}", utilisation de l'email de secours: ${FALLBACK_EMAIL}`);
+  return FALLBACK_EMAIL;
+}
+
 export async function sendAlertEmail(
   to: string,
   sensorName: string,
@@ -37,13 +64,16 @@ export async function sendAlertEmail(
   timestamp: Date
 ) {
   try {
+    // Utiliser l'email valide ou l'email de secours
+    const validEmail = getValidEmailOrFallback(to);
+    
     const formattedValue = thresholdValue !== null 
       ? `${value} (Seuil: ${thresholdValue})`
       : value.toString();
 
     const mailOptions = {
       from: `"Système d'Alertes" <${smtpConfig.user}>`,
-      to,
+      to: validEmail,
       subject: `[ALERTE] ${sensorName}`,
       html: `
         <h2>Nouvelle alerte détectée</h2>
@@ -54,9 +84,9 @@ export async function sendAlertEmail(
       `,
     };
 
-    console.log('Tentative d\'envoi d\'email à:', to);
+    console.log('Tentative d\'envoi d\'email à:', validEmail);
     const info = await transporter.sendMail(mailOptions);
-    console.log(`Email d'alerte envoyé à ${to}:`, info.response);
+    console.log(`Email d'alerte envoyé à ${validEmail}:`, info.response);
   } catch (error) {
     console.error('Erreur lors de l\'envoi de l\'email:', error);
   }
