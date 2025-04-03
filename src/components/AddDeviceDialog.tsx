@@ -104,7 +104,7 @@ export function AddDeviceDialog({ onDeviceAdded }: AddDeviceDialogProps) {
                 maxLength={16}
               />
               <p className="text-sm text-muted-foreground">
-                L'identifiant EUI de jointure doit faire 16 caractères
+                L&apos;identifiant EUI de jointure doit faire 16 caractères
               </p>
             </div>
             <div className="grid gap-2">
@@ -117,7 +117,7 @@ export function AddDeviceDialog({ onDeviceAdded }: AddDeviceDialogProps) {
                 maxLength={16}
               />
               <p className="text-sm text-muted-foreground">
-                L'identifiant EUI du device doit faire 16 caractères
+                L&apos;identifiant EUI du device doit faire 16 caractères
               </p>
             </div>
           </div>
