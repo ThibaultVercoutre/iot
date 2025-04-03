@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SensorType, Sensor } from '@prisma/client'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AlertCircle, History, Filter, Clock, Trash2, Copy, Check } from "lucide-react"
+import { AlertCircle, History, Trash2, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
@@ -425,11 +425,6 @@ export default function Dashboard() {
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen">Chargement...</div>
-  }
-
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString)
-    return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`
   }
 
   return (
