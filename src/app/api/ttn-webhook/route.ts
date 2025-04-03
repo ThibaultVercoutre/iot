@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { sendAlertEmail, queueAlertEmail } from '@/lib/email';
+import { queueAlertEmail } from '@/lib/email';
 
 const prisma = new PrismaClient();
 
