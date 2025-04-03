@@ -52,6 +52,7 @@ export async function POST(request: Request) {
     const applicationId = data.end_device_ids.application_ids.application_id;
     const joinEui = data.end_device_ids.join_eui;
     const devEui = data.end_device_ids.dev_eui;
+    const maintenance = data.uplink_message.decoded_payload?.maintenance;
 
     // Trouver le device associé à ce join_eui et dev_eui
     const device = await prisma.device.findFirst({
@@ -68,9 +69,25 @@ export async function POST(request: Request) {
             threshold: true
           }
         },
-        user: true // Inclure les données de l'utilisateur directement
+        user: true
       }
     });
+
+    if (maintenance != device?.user?.alertsEnabled) {
+      // Mettre à jour l'état des alertes de l'utilisateur
+      await prisma.user.update({
+        where: {
+          id: device?.userId
+        },
+        data: {
+          alertsEnabled: maintenance === 1
+        }
+      });
+
+      return NextResponse.json({ 
+        message: `État des alertes mis à jour: ${maintenance === 1 ? 'activées' : 'désactivées'}`
+      });
+    }
 
     if (!device) {
       console.warn(`Aucun device trouvé pour le join_eui: ${joinEui} et dev_eui: ${devEui}`);
