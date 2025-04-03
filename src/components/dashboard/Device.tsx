@@ -8,6 +8,7 @@ import {
   SensorWithData, 
   User
 } from "@/types/sensors"
+import { updateSensorThreshold, deleteSensor, getDeviceSensors } from "@/services/sensorService"
 
 interface DeviceProps {
   device: DeviceType
@@ -26,66 +27,16 @@ export function Device({ device, viewMode, selectedPeriod, user, onDeviceChange 
         return
       }
       
-      const token = document.cookie
-        .split("; ")
-        .find(row => row.startsWith("auth-token="))
-        ?.split("=")[1]
-
-      if (!token) return
-
-      const response = await fetch(`/api/sensors/${sensorId}/threshold`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ value: numValue }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null)
-        throw new Error(errorData?.error || 'Erreur lors de la mise à jour du seuil')
-      }
-
-      // Rafraîchir les données
-      const sensorsResponse = await fetch(`/api/sensors?period=${selectedPeriod}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      })
+      await updateSensorThreshold(sensorId, numValue)
       
-      if (sensorsResponse.ok) {
-        const sensorsData = await sensorsResponse.json()
-        const deviceSensors = sensorsData.filter((sensor: SensorWithData) => sensor.deviceId === device.id)
-
-        // Vérifier les capteurs qui ont une alerte active
-        const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
-          const latestData = sensor.historicalData[0];
-          let isInAlert = false;
-
-          if (latestData) {
-            if (sensor.isBinary) {
-              // Pour les capteurs binaires, en alerte si valeur = 1
-              isInAlert = latestData.value === 1;
-            } else if (sensor.threshold) {
-              // Pour les capteurs numériques, en alerte si au-dessus du seuil
-              isInAlert = latestData.value >= sensor.threshold.value;
-            }
-          }
-
-          return {
-            ...sensor,
-            isInAlert
-          };
-        });
-
-        const updatedDevice = {
-          ...device,
-          sensors: sensorsWithAlertStatus
-        }
-        
-        onDeviceChange(updatedDevice)
+      // Rafraîchir les données
+      const sensors = await getDeviceSensors(device.id, selectedPeriod)
+      const updatedDevice = {
+        ...device,
+        sensors
       }
+      
+      onDeviceChange(updatedDevice)
     } catch (error) {
       console.error('Erreur lors de la mise à jour du seuil:', error)
     }
@@ -93,119 +44,35 @@ export function Device({ device, viewMode, selectedPeriod, user, onDeviceChange 
 
   const handleDeleteSensor = async (sensor: SensorWithData) => {
     try {
-      const token = document.cookie
-        .split("; ")
-        .find(row => row.startsWith("auth-token="))
-        ?.split("=")[1]
-
-      if (!token) return
-
-      const response = await fetch(`/api/sensors/${sensor.id}`, {
-        method: 'DELETE',
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de la suppression du capteur');
-      }
+      await deleteSensor(sensor.id)
 
       // Rafraîchir les données
-      const sensorsResponse = await fetch(`/api/sensors?period=${selectedPeriod}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      })
-      
-      if (sensorsResponse.ok) {
-        const sensorsData = await sensorsResponse.json()
-        const deviceSensors = sensorsData.filter((s: SensorWithData) => s.deviceId === device.id)
-
-        // Vérifier les capteurs qui ont une alerte active
-        const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
-          const latestData = sensor.historicalData[0];
-          let isInAlert = false;
-
-          if (latestData) {
-            if (sensor.isBinary) {
-              // Pour les capteurs binaires, en alerte si valeur = 1
-              isInAlert = latestData.value === 1;
-            } else if (sensor.threshold) {
-              // Pour les capteurs numériques, en alerte si au-dessus du seuil
-              isInAlert = latestData.value >= sensor.threshold.value;
-            }
-          }
-
-          return {
-            ...sensor,
-            isInAlert
-          };
-        });
-
-        const updatedDevice = {
-          ...device,
-          sensors: sensorsWithAlertStatus
-        }
-        
-        onDeviceChange(updatedDevice)
+      const sensors = await getDeviceSensors(device.id, selectedPeriod)
+      const updatedDevice = {
+        ...device,
+        sensors
       }
+      
+      onDeviceChange(updatedDevice)
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error('Erreur:', error)
     }
-  };
+  }
 
   const handleSensorAdded = async () => {
     try {
-      const token = document.cookie
-        .split("; ")
-        .find(row => row.startsWith("auth-token="))
-        ?.split("=")[1]
-
-      if (!token) return
-
-      const sensorsResponse = await fetch(`/api/sensors?period=${selectedPeriod}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      })
-      
-      if (sensorsResponse.ok) {
-        const sensorsData = await sensorsResponse.json()
-        const deviceSensors = sensorsData.filter((sensor: SensorWithData) => sensor.deviceId === device.id)
-
-        // Vérifier les capteurs qui ont une alerte active
-        const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
-          const latestData = sensor.historicalData[0];
-          let isInAlert = false;
-
-          if (latestData) {
-            if (sensor.isBinary) {
-              // Pour les capteurs binaires, en alerte si valeur = 1
-              isInAlert = latestData.value === 1;
-            } else if (sensor.threshold) {
-              // Pour les capteurs numériques, en alerte si au-dessus du seuil
-              isInAlert = latestData.value >= sensor.threshold.value;
-            }
-          }
-
-          return {
-            ...sensor,
-            isInAlert
-          };
-        });
-
-        const updatedDevice = {
-          ...device,
-          sensors: sensorsWithAlertStatus
-        }
-        
-        onDeviceChange(updatedDevice)
+      // Rafraîchir les données
+      const sensors = await getDeviceSensors(device.id, selectedPeriod)
+      const updatedDevice = {
+        ...device,
+        sensors
       }
+      
+      onDeviceChange(updatedDevice)
     } catch (error) {
       console.error('Erreur lors de la récupération des données:', error)
     }
-  };
+  }
 
   return (
     <Card className="p-6">
