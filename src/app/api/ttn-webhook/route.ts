@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { sendAlertEmail } from '@/lib/email';
+import { sendAlertEmail, queueAlertEmail } from '@/lib/email';
 
 const prisma = new PrismaClient();
 
@@ -88,6 +88,8 @@ export async function POST(request: Request) {
     }
 
     // Traiter chaque valeur dans le payload décodé
+    const alertsToProcess = []; // Pour traiter les alertes à la fin
+
     for (const [sensorUniqueId, value] of Object.entries(data.uplink_message.decoded_payload)) {
       const sensor = device.sensors.find(s => s.uniqueId === sensorUniqueId);
       
@@ -157,14 +159,14 @@ export async function POST(request: Request) {
           });
           console.log(`Nouvelle alerte créée pour ${sensor.name}: ${value}`);
 
-          // Envoyer l'email d'alerte
-          await sendAlertEmail(
-            user.email,
-            sensor.name,
+          // Ajouter à la liste des alertes à traiter
+          alertsToProcess.push({
+            user,
+            sensor,
             value,
-            null,
+            thresholdValue: null,
             timestamp
-          );
+          });
         }
         // Ajouter la gestion de la fin d'alerte quand la valeur revient à 0
         else if (value === 0 && activeAlert) {
@@ -194,14 +196,14 @@ export async function POST(request: Request) {
           });
           console.log(`Nouvelle alerte créée pour ${sensor.name}: ${value} >= ${thresholdValue}`);
 
-          // Envoyer l'email d'alerte
-          await sendAlertEmail(
-            user.email,
-            sensor.name,
+          // Ajouter à la liste des alertes à traiter
+          alertsToProcess.push({
+            user,
+            sensor,
             value,
             thresholdValue,
             timestamp
-          );
+          });
         }
         // Cas où la valeur revient sous le seuil et il existe une alerte active
         else if (value < thresholdValue && activeAlert) {
@@ -215,6 +217,17 @@ export async function POST(request: Request) {
           console.log(`Alerte terminée pour ${sensor.name}: ${value} < ${thresholdValue}`);
         }
       }
+    }
+
+    // Traiter toutes les alertes à la fin pour les grouper par utilisateur
+    for (const alert of alertsToProcess) {
+      await queueAlertEmail(
+        alert.user.email,
+        alert.sensor.name,
+        alert.value,
+        alert.thresholdValue,
+        alert.timestamp
+      );
     }
 
     return NextResponse.json({ 
