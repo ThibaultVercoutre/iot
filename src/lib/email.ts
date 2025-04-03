@@ -68,11 +68,18 @@ export interface SensorAlertInfo {
 // Clé: email utilisateur, Valeur: tableau d'infos d'alerte
 const pendingAlerts = new Map<string, SensorAlertInfo[]>();
 
-// Délai en ms entre les emails (30 secondes)
-const EMAIL_THROTTLE_DELAY = 30 * 1000;
+// Délai en ms entre les emails (2 minutes)
+const EMAIL_THROTTLE_DELAY = 2 * 60 * 1000;
+
+// Empêcher les emails en double pour les mêmes capteurs
+const SENSOR_DEDUPLICATION_WINDOW = 30 * 60 * 1000; // 30 minutes
+const sentAlerts = new Map<string, number>(); // Clé: email+sensorName, Valeur: timestamp
 
 // Map pour suivre le dernier envoi d'email par utilisateur
 const lastSentEmails = new Map<string, number>();
+
+// Map pour suivre les timeouts programmés
+const scheduledTimeouts = new Map<string, NodeJS.Timeout>();
 
 /**
  * Ajoute une alerte à la file d'attente et envoie un email si nécessaire
@@ -86,6 +93,16 @@ export async function queueAlertEmail(
 ) {
   const validEmail = getValidEmailOrFallback(to);
   
+  // Vérifier si cette alerte a déjà été envoyée récemment
+  const alertKey = `${validEmail}:${sensorName}`;
+  const now = Date.now();
+  const lastSentTimestamp = sentAlerts.get(alertKey);
+  
+  if (lastSentTimestamp && now - lastSentTimestamp < SENSOR_DEDUPLICATION_WINDOW) {
+    console.log(`Alerte ignorée pour ${sensorName}: déjà envoyée il y a moins de 30 minutes`);
+    return;
+  }
+  
   // Créer l'info d'alerte
   const alertInfo: SensorAlertInfo = {
     sensorName,
@@ -98,21 +115,40 @@ export async function queueAlertEmail(
   if (!pendingAlerts.has(validEmail)) {
     pendingAlerts.set(validEmail, []);
   }
-  pendingAlerts.get(validEmail)!.push(alertInfo);
   
-  // Vérifier quand le dernier email a été envoyé à cet utilisateur
-  const now = Date.now();
+  // Vérifier si cette alerte est déjà dans la file d'attente
+  const alertsForUser = pendingAlerts.get(validEmail)!;
+  const isDuplicate = alertsForUser.some(alert => alert.sensorName === sensorName);
+  
+  if (!isDuplicate) {
+    alertsForUser.push(alertInfo);
+    console.log(`Alerte ajoutée à la file d'attente pour ${validEmail}: ${sensorName}`);
+  } else {
+    console.log(`Alerte ignorée (déjà dans la file d'attente): ${sensorName}`);
+  }
+  
+  // Annuler l'éventuel timeout existant
+  if (scheduledTimeouts.has(validEmail)) {
+    clearTimeout(scheduledTimeouts.get(validEmail)!);
+    scheduledTimeouts.delete(validEmail);
+  }
+  
+  // Programmer l'envoi
   const lastSent = lastSentEmails.get(validEmail) || 0;
+  const timeToWait = Math.max(0, EMAIL_THROTTLE_DELAY - (now - lastSent));
   
-  // Si le délai est écoulé, envoyer immédiatement
-  if (now - lastSent > EMAIL_THROTTLE_DELAY) {
+  if (timeToWait === 0) {
+    // Envoyer immédiatement
     await sendQueuedAlerts(validEmail);
   } else {
-    // Sinon, programmer l'envoi après le délai
-    console.log(`Email retardé pour ${validEmail}, il sera envoyé après le délai de limitation`);
-    setTimeout(() => {
+    // Programmer l'envoi après le délai
+    console.log(`Email retardé pour ${validEmail}, sera envoyé dans ${timeToWait / 1000} secondes`);
+    const timeout = setTimeout(() => {
       sendQueuedAlerts(validEmail);
-    }, EMAIL_THROTTLE_DELAY - (now - lastSent));
+      scheduledTimeouts.delete(validEmail);
+    }, timeToWait);
+    
+    scheduledTimeouts.set(validEmail, timeout);
   }
 }
 
@@ -128,6 +164,12 @@ async function sendQueuedAlerts(email: string) {
     const alerts = pendingAlerts.get(email)!;
     pendingAlerts.set(email, []); // Vider la file d'attente
     lastSentEmails.set(email, Date.now()); // Mettre à jour le timestamp
+    
+    // Enregistrer ces alertes comme envoyées
+    for (const alert of alerts) {
+      const alertKey = `${email}:${alert.sensorName}`;
+      sentAlerts.set(alertKey, Date.now());
+    }
     
     const alertCount = alerts.length;
     const alertsHtml = alerts.map(alert => {
