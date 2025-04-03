@@ -22,6 +22,7 @@ import {
   formatValue, 
   getSensorColor 
 } from "@/types/sensors"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 interface SensorProps {
   sensor: SensorWithData
@@ -94,8 +95,8 @@ export function Sensor({
                 <span className="sr-only">Copier l&apos;ID</span>
               </Button>
             </div>
-            <Dialog>
-              <DialogTrigger asChild>
+            <ConfirmDialog
+              trigger={
                 <Button 
                   variant="ghost" 
                   size="icon"
@@ -104,37 +105,12 @@ export function Sensor({
                   <Trash2 className="h-4 w-4" />
                   <span className="sr-only">Supprimer le capteur</span>
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Supprimer le capteur</DialogTitle>
-                  <DialogDescription>
-                    Êtes-vous sûr de vouloir supprimer le capteur &quot;{sensor.name}&quot; ? Cette action supprimera également toutes les données et alertes associées.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      const closeDialog = document.querySelector(`[data-state="open"]`)?.querySelector('[aria-label="Close"]') as HTMLButtonElement
-                      if (closeDialog) closeDialog.click()
-                    }}
-                  >
-                    Annuler
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      onDeleteSensor(sensor)
-                      const closeDialog = document.querySelector(`[data-state="open"]`)?.querySelector('[aria-label="Close"]') as HTMLButtonElement
-                      if (closeDialog) closeDialog.click()
-                    }}
-                  >
-                    Supprimer
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+              }
+              title="Supprimer le capteur"
+              description={`Êtes-vous sûr de vouloir supprimer le capteur "${sensor.name}" ? Cette action supprimera également toutes les données et alertes associées.`}
+              onConfirm={() => onDeleteSensor(sensor)}
+              confirmText="Supprimer"
+            />
           </div>
         </CardTitle>
       </CardHeader>
