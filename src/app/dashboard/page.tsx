@@ -430,16 +430,7 @@ export default function Dashboard() {
   return (
     <div className="container mx-auto p-4">
       {user && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
-          <AlertStatus alertsEnabled={user.alertsEnabled} />
-          
-          <Link href="/dashboard/alerts" className="w-full sm:w-auto">
-            <Button className="w-full sm:w-auto">
-              <History className="mr-2 h-4 w-4" />
-              Historique des alertes
-            </Button>
-          </Link>
-        </div>
+        <AlertStatus alertsEnabled={user.alertsEnabled} />
       )}
       
       {user && user.alertsEnabled && sensorsInAlert.length > 0 && (
