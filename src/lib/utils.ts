@@ -10,7 +10,7 @@ export function formatValue(sensor: Sensor, value: number): string {
   if (sensor.isBinary) {
     return value === 1 ? 'ON' : 'OFF'
   }
-  return `${value}${'Db'}`
+  return `${value}${'dB'}`
 }
 
 export function getSensorColor(type: string): string {
