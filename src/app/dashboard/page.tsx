@@ -256,11 +256,20 @@ export default function Dashboard() {
             if (!sensorsResponse.ok) throw new Error('Erreur lors de la récupération des capteurs')
 
             const sensorsData = await sensorsResponse.json()
+            console.log('Données des capteurs reçues:', sensorsData)
+            
             const deviceSensors = sensorsData.filter((sensor: SensorWithData) => sensor.deviceId === device.id)
+            console.log('Capteurs filtrés pour le device:', deviceSensors)
 
             // Vérifier les capteurs qui ont une alerte active
             const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
-              // Un capteur est en alerte s'il a des alertLogs sans endDataId
+              console.log('Traitement du capteur:', {
+                id: sensor.id,
+                name: sensor.name,
+                type: sensor.type,
+                threshold: sensor.threshold
+              })
+              
               const isInAlert = sensor.alertLogs.length > 0;
               
               return {

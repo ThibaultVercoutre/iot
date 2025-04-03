@@ -112,6 +112,13 @@ export async function GET(request: Request) {
       },
     });
 
+    console.log('Capteurs récupérés de la BDD:', sensors.map(s => ({
+      id: s.id,
+      name: s.name,
+      type: s.type,
+      threshold: s.threshold
+    })));
+
     return NextResponse.json(sensors);
   } catch (error) {
     console.error("Erreur lors de la récupération des capteurs:", error);
@@ -181,7 +188,7 @@ export async function POST(request: Request) {
         isBinary,
         uniqueId,
         deviceId,
-        ...(type === "SOUND" ? {
+        ...(type === "SOUND" || type === "VIBRATION" ? {
           threshold: {
             create: {
               value: threshold || 80 // Valeur par défaut si non spécifiée
