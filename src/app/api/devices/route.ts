@@ -12,9 +12,25 @@ const deviceSchema = z.object({
   devEui: z.string().length(16, "Le Dev EUI doit faire 16 caractères"),
 })
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // Récupérer l'utilisateur à partir du token
+    const token = request.headers.get("Authorization")?.split(" ")[1]
+    if (!token) {
+      return NextResponse.json(
+        { error: "Token d'authentification manquant" },
+        { status: 401 }
+      )
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key") as {
+      userId: number
+    }
+
     const devices = await prisma.device.findMany({
+      where: {
+        userId: decoded.userId
+      },
       select: {
         id: true,
         name: true,
