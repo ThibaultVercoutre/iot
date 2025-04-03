@@ -9,13 +9,7 @@ import { Label } from "@/components/ui/label"
 import { AlertCircle, History, Filter, Clock, Trash2, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+
 import { AddSensorDialog } from "@/components/AddSensorDialog"
 import { AddDeviceDialog } from "@/components/AddDeviceDialog"
 import SensorChart from "@/components/SensorChart"
