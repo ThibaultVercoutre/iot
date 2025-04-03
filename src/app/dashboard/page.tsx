@@ -2,56 +2,21 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { SensorType, Sensor } from '@prisma/client'
+import { SensorType } from '@prisma/client'
 
 import { AddDeviceDialog } from "@/components/AddDeviceDialog"
 import { AlertStatus } from "../../components/dashboard/AlertStatus"
 import { ActiveAlerts } from "../../components/dashboard/ActiveAlerts"
 import { DashboardFilters } from "../../components/dashboard/DashboardFilters"
 import { Device } from "../../components/dashboard/Device"
-
-// Types pour les données des capteurs
-interface SensorData {
-  id: number
-  value: number
-  timestamp: string
-  sensorId: number
-}
-
-interface Threshold {
-  id: number
-  value: number
-  sensorId: number
-}
-
-interface SensorWithData extends Sensor {
-  historicalData: SensorData[]
-  threshold?: Threshold
-  isBinary: boolean
-  isInAlert?: boolean
-  alertLogs: {
-    id: number
-    startDataId: number
-    createdAt: string
-    startData: SensorData
-  }[]
-}
-
-interface Device {
-  id: number
-  name: string
-  sensors: SensorWithData[]
-}
-
-interface User {
-  id: number
-  alertsEnabled: boolean
-}
+import { verifyAuth, getUser } from "@/services/authService"
+import { getDevicesWithSensors } from "@/services/deviceService"
+import { Device as DeviceType, SensorWithData, User } from "@/types/sensors"
 
 export default function Dashboard() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
-  const [devices, setDevices] = useState<Device[]>([])
+  const [devices, setDevices] = useState<DeviceType[]>([])
   const [sensorsInAlert, setSensorsInAlert] = useState<SensorWithData[]>([])
   const [user, setUser] = useState<User | null>(null)
   const [selectedPeriod, setSelectedPeriod] = useState<'1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month'>('day')
@@ -98,7 +63,7 @@ export default function Dashboard() {
   })
 
   // Fonction pour mettre à jour un device spécifique
-  const handleDeviceChange = useCallback((updatedDevice: Device) => {
+  const handleDeviceChange = useCallback((updatedDevice: DeviceType) => {
     setDevices(prevDevices => 
       prevDevices.map(device => 
         device.id === updatedDevice.id ? updatedDevice : device
@@ -116,27 +81,9 @@ export default function Dashboard() {
   }, [devices])
 
   useEffect(() => {
-    const verifyAuth = async () => {
+    const checkAuth = async () => {
       try {
-        const token = document.cookie
-          .split("; ")
-          .find(row => row.startsWith("auth-token="))
-          ?.split("=")[1]
-
-        if (!token) {
-          throw new Error("Pas de token")
-        }
-
-        const response = await fetch("/api/auth/verify", {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        })
-
-        if (!response.ok) {
-          throw new Error("Token invalide")
-        }
-
+        await verifyAuth()
         setIsLoading(false)
       } catch (error) {
         console.error("Erreur lors de la vérification de l'authentification :", error)
@@ -144,89 +91,23 @@ export default function Dashboard() {
       }
     }
 
-    verifyAuth()
+    checkAuth()
   }, [router])
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = document.cookie
-          .split("; ")
-          .find(row => row.startsWith("auth-token="))
-          ?.split("=")[1]
-
-        if (!token) return
-
-        const [devicesResponse, userResponse] = await Promise.all([
-          fetch(`/api/devices`, {
-            headers: {
-              "Authorization": `Bearer ${token}`
-            }
-          }),
-          fetch('/api/user', {
-            headers: {
-              "Authorization": `Bearer ${token}`
-            }
-          })
-        ])
-
-        if (!devicesResponse.ok) throw new Error('Erreur lors de la récupération des devices')
-        if (!userResponse.ok) throw new Error('Erreur lors de la récupération des données utilisateur')
-
-        const [devicesData, userData] = await Promise.all([
-          devicesResponse.json(),
-          userResponse.json()
+        const [userData, devicesWithSensors] = await Promise.all([
+          getUser(),
+          getDevicesWithSensors(selectedPeriod)
         ])
         
         setUser(userData)
-        
-        // Récupérer les capteurs pour chaque device
-        const devicesWithSensors = await Promise.all(
-          devicesData.map(async (device: { id: number, name: string }) => {
-            const sensorsResponse = await fetch(`/api/sensors?period=${selectedPeriod}`, {
-              headers: {
-                "Authorization": `Bearer ${token}`
-              }
-            })
-
-            if (!sensorsResponse.ok) throw new Error('Erreur lors de la récupération des capteurs')
-
-            const sensorsData = await sensorsResponse.json()
-            const deviceSensors = sensorsData.filter((sensor: SensorWithData) => sensor.deviceId === device.id)
-
-            // Vérifier les capteurs qui ont une alerte active
-            const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
-              const latestData = sensor.historicalData[0];
-              let isInAlert = false;
-
-              if (latestData) {
-                if (sensor.isBinary) {
-                  // Pour les capteurs binaires, en alerte si valeur = 1
-                  isInAlert = latestData.value === 1;
-                } else if (sensor.threshold) {
-                  // Pour les capteurs numériques, en alerte si au-dessus du seuil
-                  isInAlert = latestData.value >= sensor.threshold.value;
-                }
-              }
-
-              return {
-                ...sensor,
-                isInAlert
-              };
-            });
-
-            return {
-              ...device,
-              sensors: sensorsWithAlertStatus
-            }
-          })
-        )
-
         setDevices(devicesWithSensors)
         
         // Filtrer les capteurs en alerte
         const alertSensors = devicesWithSensors.flatMap(device => 
-          device.sensors.filter((s: SensorWithData) => s.isInAlert)
+          device.sensors.filter(sensor => sensor.isInAlert)
         )
         setSensorsInAlert(alertSensors)
       } catch (error) {
@@ -289,80 +170,19 @@ export default function Dashboard() {
           />
         ))}
         
-        <AddDeviceDialog onDeviceAdded={() => {
-          // Rafraîchir les données après l'ajout d'un device
-          const fetchData = async () => {
-            try {
-              const token = document.cookie
-                .split("; ")
-                .find(row => row.startsWith("auth-token="))
-                ?.split("=")[1]
-
-              if (!token) return
-
-              const devicesResponse = await fetch('/api/devices', {
-                headers: {
-                  "Authorization": `Bearer ${token}`
-                }
-              })
-              if (devicesResponse.ok) {
-                const devicesData = await devicesResponse.json()
-                
-                // Récupérer les capteurs pour chaque device
-                const devicesWithSensors = await Promise.all(
-                  devicesData.map(async (device: { id: number, name: string }) => {
-                    const sensorsResponse = await fetch(`/api/sensors?period=${selectedPeriod}`, {
-                      headers: {
-                        "Authorization": `Bearer ${token}`
-                      }
-                    })
-
-                    if (!sensorsResponse.ok) throw new Error('Erreur lors de la récupération des capteurs')
-
-                    const sensorsData = await sensorsResponse.json()
-                    const deviceSensors = sensorsData.filter((sensor: SensorWithData) => sensor.deviceId === device.id)
-
-                    // Vérifier les capteurs qui ont une alerte active
-                    const sensorsWithAlertStatus = deviceSensors.map((sensor: SensorWithData) => {
-                      const latestData = sensor.historicalData[0];
-                      let isInAlert = false;
-
-                      if (latestData) {
-                        if (sensor.isBinary) {
-                          // Pour les capteurs binaires, en alerte si valeur = 1
-                          isInAlert = latestData.value === 1;
-                        } else if (sensor.threshold) {
-                          // Pour les capteurs numériques, en alerte si au-dessus du seuil
-                          isInAlert = latestData.value >= sensor.threshold.value;
-                        }
-                      }
-
-                      return {
-                        ...sensor,
-                        isInAlert
-                      };
-                    });
-
-                    return {
-                      ...device,
-                      sensors: sensorsWithAlertStatus
-                    }
-                  })
-                )
-
-                setDevices(devicesWithSensors)
-                
-                // Filtrer les capteurs en alerte
-                const alertSensors = devicesWithSensors.flatMap(device => 
-                  device.sensors.filter((s: SensorWithData) => s.isInAlert)
-                )
-                setSensorsInAlert(alertSensors)
-              }
-            } catch (error) {
-              console.error('Erreur lors de la récupération des données:', error)
-            }
+        <AddDeviceDialog onDeviceAdded={async () => {
+          try {
+            const devicesWithSensors = await getDevicesWithSensors(selectedPeriod)
+            setDevices(devicesWithSensors)
+            
+            // Filtrer les capteurs en alerte
+            const alertSensors = devicesWithSensors.flatMap(device => 
+              device.sensors.filter(sensor => sensor.isInAlert)
+            )
+            setSensorsInAlert(alertSensors)
+          } catch (error) {
+            console.error('Erreur lors de la récupération des données:', error)
           }
-          fetchData()
         }} />
       </div>
     </div>
