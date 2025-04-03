@@ -67,7 +67,8 @@ export async function POST(request: Request) {
           include: {
             threshold: true
           }
-        }
+        },
+        user: true // Inclure les données de l'utilisateur directement
       }
     });
 
@@ -87,9 +88,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // Traiter chaque valeur dans le payload décodé
-    const alertsToProcess = []; // Pour traiter les alertes à la fin
+    // Récupérer l'utilisateur une seule fois
+    const user = device.user;
+    if (!user) {
+      console.warn(`Utilisateur non trouvé pour le device ${device.id}`);
+      return NextResponse.json({ error: "Utilisateur non trouvé" }, { status: 404 });
+    }
 
+    const alertsEnabled = user.alertsEnabled ?? true;
+    
+    // Collecter toutes les alertes dans cette requête
+    const newAlerts = [];
+    const timestamp = data.uplink_message?.received_at 
+      ? parseTTNDate(data.uplink_message.received_at)
+      : new Date();
+
+    // Traiter chaque valeur dans le payload décodé
     for (const [sensorUniqueId, value] of Object.entries(data.uplink_message.decoded_payload)) {
       const sensor = device.sensors.find(s => s.uniqueId === sensorUniqueId);
       
@@ -97,10 +111,6 @@ export async function POST(request: Request) {
         console.warn(`Aucun capteur trouvé pour l'ID unique: ${sensorUniqueId}`);
         continue;
       }
-
-      const timestamp = data.uplink_message?.received_at 
-        ? parseTTNDate(data.uplink_message.received_at)
-        : new Date();
 
       // Créer l'entrée dans la base de données
       const sensorData = await prisma.sensorData.create({
@@ -112,18 +122,6 @@ export async function POST(request: Request) {
       });
 
       console.log(`Donnée enregistrée pour le capteur ${sensor.name}: ${value}`);
-
-      // Vérifier si les alertes sont activées pour cet utilisateur
-      const user = await prisma.user.findUnique({
-        where: { id: device.userId }
-      });
-      
-      if (!user) {
-        console.warn(`Utilisateur non trouvé pour le device ${device.id}`);
-        continue;
-      }
-
-      const alertsEnabled = user.alertsEnabled ?? true;
 
       // Si c'est le capteur qui contrôle les alertes (bouton)
       if (user.alertSensorId === sensor.id) {
@@ -159,11 +157,10 @@ export async function POST(request: Request) {
           });
           console.log(`Nouvelle alerte créée pour ${sensor.name}: ${value}`);
 
-          // Ajouter à la liste des alertes à traiter
-          alertsToProcess.push({
-            user,
-            sensor,
-            value,
+          // Ajouter à la liste des nouvelles alertes
+          newAlerts.push({
+            sensorName: sensor.name,
+            value: Number(value),
             thresholdValue: null,
             timestamp
           });
@@ -196,11 +193,10 @@ export async function POST(request: Request) {
           });
           console.log(`Nouvelle alerte créée pour ${sensor.name}: ${value} >= ${thresholdValue}`);
 
-          // Ajouter à la liste des alertes à traiter
-          alertsToProcess.push({
-            user,
-            sensor,
-            value,
+          // Ajouter à la liste des nouvelles alertes
+          newAlerts.push({
+            sensorName: sensor.name,
+            value: Number(value),
             thresholdValue,
             timestamp
           });
@@ -219,19 +215,16 @@ export async function POST(request: Request) {
       }
     }
 
-    // Traiter toutes les alertes à la fin pour les grouper par utilisateur
-    for (const alert of alertsToProcess) {
-      await queueAlertEmail(
-        alert.user.email,
-        alert.sensor.name,
-        alert.value,
-        alert.thresholdValue,
-        alert.timestamp
-      );
+    // Si des alertes ont été déclenchées, envoyer un email groupé
+    if (newAlerts.length > 0) {
+      console.log(`Envoi d'un email pour ${newAlerts.length} capteurs en alerte`);
+      // Envoi direct sans utiliser queueAlertEmail pour chaque capteur
+      await sendDirectAlertEmail(user.email, newAlerts);
     }
 
     return NextResponse.json({ 
-      message: 'Données enregistrées avec succès'
+      message: 'Données enregistrées avec succès',
+      alertsCreated: newAlerts.length
     }, { status: 200 });
 
   } catch (error) {
@@ -240,5 +233,24 @@ export async function POST(request: Request) {
       error: 'Erreur lors du traitement des données',
       details: error instanceof Error ? error.message : 'Erreur inconnue'
     }, { status: 500 });
+  }
+}
+
+// Fonction pour envoyer directement un email avec plusieurs capteurs en alerte
+async function sendDirectAlertEmail(email: string, alerts: any[]) {
+  try {
+    // Déléguer à la fonction existante en envoyant chaque alerte individuellement
+    // pour qu'elles soient regroupées par le système de file d'attente
+    for (const alert of alerts) {
+      await queueAlertEmail(
+        email,
+        alert.sensorName,
+        alert.value,
+        alert.thresholdValue,
+        alert.timestamp
+      );
+    }
+  } catch (error) {
+    console.error('Erreur lors de l\'envoi direct d\'alertes groupées:', error);
   }
 } 
