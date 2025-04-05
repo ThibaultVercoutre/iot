@@ -73,8 +73,8 @@ def create_payload(vibration_value, alert_value, sound_value):
             "application_ids": {
             "application_id": "iot-project-dashboard"
             },
-            "dev_eui": "70B3D57ED006F550",
-            "join_eui": "7878787878787878"
+            "dev_eui": "A8610A3435446810",
+            "join_eui": "0000000000000000"
         },
         "correlation_ids": [
             "as:up:01JQEKGMGSEPJJ0W7RXWQY3H5M",
