@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       }
     });
 
-    if (maintenance != device?.user?.alertsEnabled) {
+    if (maintenance == device?.user?.alertsEnabled) {
       // Mettre à jour l'état des alertes de l'utilisateur
       await prisma.user.update({
         where: {
