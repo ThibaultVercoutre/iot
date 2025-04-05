@@ -71,7 +71,7 @@ def create_payload(vibration_value, alert_value, sound_value):
         "end_device_ids": {
             "device_id": "test-simulate",
             "application_ids": {
-            "application_id": "iot-project-dashboard"
+            "application_id": "essaie-carte"
             },
             "dev_eui": "A8610A3435446810",
             "join_eui": "0000000000000000"
