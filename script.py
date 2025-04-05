@@ -87,7 +87,8 @@ def create_payload(vibration_value, alert_value, sound_value):
             "decoded_payload": {
             "36L8JKFN": vibration_value,
             "H3Z9WH2T": alert_value,
-            "IBBTZ1QM": sound_value
+            "IBBTZ1QM": sound_value,
+            "maintenance": "0"
             },
             "rx_metadata": [
             {
