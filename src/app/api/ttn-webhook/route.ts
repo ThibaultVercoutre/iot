@@ -80,12 +80,12 @@ export async function POST(request: Request) {
           id: device?.userId
         },
         data: {
-          alertsEnabled: maintenance === 1
+          alertsEnabled: maintenance === 0
         }
       });
 
       return NextResponse.json({ 
-        message: `État des alertes mis à jour: ${maintenance === 1 ? 'activées' : 'désactivées'}`
+        message: `État des alertes mis à jour: ${maintenance === 0 ? 'activées' : 'désactivées'}`
       });
     }
 
