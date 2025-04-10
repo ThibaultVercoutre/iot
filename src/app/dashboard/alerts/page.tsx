@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SensorType } from '@prisma/client'
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Clock, AlertCircle } from "lucide-react"
+import { ArrowLeft, Clock, AlertCircle, RefreshCw } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { verifyAuth } from "@/services/authService"
 import { getAlertLogs, formatDateTime, formatDuration, formatValue, AlertLog } from "@/services/alertService"
@@ -74,10 +74,6 @@ export default function AlertsHistory() {
     }
   }, [showOnlyActive])
 
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-screen">Chargement...</div>
-  }
-
   return (
     <div className="container mx-auto p-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -88,6 +84,17 @@ export default function AlertsHistory() {
           </Button>
           <h1 className="text-2xl font-bold">Historique des alertes</h1>
         </div>
+        <Button 
+          variant="outline" 
+          onClick={() => {
+            setIsLoading(true)
+            setTimeout(() => setIsLoading(false), 1000)
+          }}
+          className="w-full sm:w-auto"
+        >
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Actualiser
+        </Button>
         <Button 
           variant={showOnlyActive ? "default" : "outline"} 
           onClick={() => setShowOnlyActive(!showOnlyActive)}
@@ -109,7 +116,7 @@ export default function AlertsHistory() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoadingOnlyActive ? (
+          {isLoadingOnlyActive || isLoading ? (
             <div className="text-center py-8 text-gray-500">
               Chargement des alertes...
             </div>
