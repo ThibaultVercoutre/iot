@@ -1,10 +1,20 @@
 import { User } from '@/types/sensors'
 
-export const verifyAuth = async (): Promise<void> => {
+export const getToken = (): string => {
   const token = document.cookie
     .split("; ")
     .find(row => row.startsWith("auth-token="))
     ?.split("=")[1]
+
+  if (!token) {
+    throw new Error("Pas de token")
+  }
+
+  return token
+}
+
+export const verifyAuth = async (): Promise<void> => {
+  const token = getToken()
 
   if (!token) {
     throw new Error("Pas de token")

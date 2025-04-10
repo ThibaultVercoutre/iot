@@ -1,4 +1,5 @@
 import { SensorType } from '@prisma/client'
+import { getToken } from './authService'
 
 // Types pour les alertes
 export interface AlertLog {
@@ -18,19 +19,6 @@ export interface AlertLog {
       value: number
     } | null
   }
-}
-
-const getToken = (): string => {
-  const token = document.cookie
-    .split("; ")
-    .find(row => row.startsWith("auth-token="))
-    ?.split("=")[1]
-
-  if (!token) {
-    throw new Error("Pas de token")
-  }
-
-  return token
 }
 
 export const getAlertLogs = async (activeOnly: boolean = false): Promise<AlertLog[]> => {
