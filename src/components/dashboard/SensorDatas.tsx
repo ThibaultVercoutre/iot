@@ -31,14 +31,28 @@ export function SensorDatas({
   timeOffset = 0,
   activeAlerts
 }: SensorDatasProps) {
+  // Déterminer si le capteur est actuellement en alerte
+  const isInAlert = user?.alertsEnabled && 
+                    activeAlerts.some(alert => 
+                      alert.sensor.id === sensor.id && 
+                      alert.isActive
+                    );
+                    
+  // Déterminer la couleur à utiliser
+  const valueColor = isInAlert 
+    ? 'text-red-500' 
+    : '';
+
   return (
     <div className="flex flex-col gap-4">
       <div>
         <div 
-          className={`text-4xl font-bold mb-2 ${
-            user?.alertsEnabled && activeAlerts.some(alert => alert.sensor.id === sensor.id && alert.isActive) ? 'text-red-500' : ''
-          }`} 
-          style={{ color: user?.alertsEnabled && activeAlerts.some(alert => alert.sensor.id === sensor.id && alert.isActive) ? undefined : getSensorColor(sensor.type) }}
+          className={`text-4xl font-bold mb-2 ${valueColor}`}
+          style={{ 
+            color: isInAlert 
+              ? undefined 
+              : getSensorColor(sensor.type) 
+          }}
         >
           {latestData ? formatValue(sensor, latestData.value) : 'N/A'}
         </div>
