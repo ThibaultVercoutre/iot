@@ -16,6 +16,34 @@ import NavbarDocumentation from "@/components/dashboard/documentation/NavbarDocu
 export default function DocumentationPage() {
   const router = useRouter()
 
+  const pages = [
+    {
+      title: "Tableau de bord",
+      component: DashboardDocumentation,
+      value: "dashboard"
+    },
+    {
+      title: "Appareils et capteurs",
+      component: DevicesAndSensorsDocumentation,
+      value: "devices"
+    },
+    {
+      title: "Alertes",
+      component: AlertsDocumentation,
+      value: "alerts"
+    },
+    {
+      title: "Compte",
+      component: AccountDocumentation,
+      value: "account"
+    },
+    {
+      title: "Statistiques",
+      component: StatsDocumentation,
+      value: "stats"
+    }
+  ]
+
   return (
     <div className="container mx-auto py-6 px-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -51,30 +79,11 @@ export default function DocumentationPage() {
       <Tabs defaultValue="dashboard" className="space-y-4">
         <NavbarDocumentation />
 
-        {/* Section Tableau de bord */}
-        <TabsContent value="dashboard" className="space-y-4">
-          <DashboardDocumentation />
-        </TabsContent>
-
-        {/* Section Appareils et capteurs */}
-        <TabsContent value="devices" className="space-y-4">
-          <DevicesAndSensorsDocumentation />
-        </TabsContent>
-
-        {/* Section Alertes */}
-        <TabsContent value="alerts" className="space-y-4">
-          <AlertsDocumentation />
-        </TabsContent>
-
-        {/* Section Compte */}
-        <TabsContent value="account" className="space-y-4">
-          <AccountDocumentation />
-        </TabsContent>
-
-        {/* Section Statistiques */}
-        <TabsContent value="stats" className="space-y-4">
-          <StatsDocumentation />
-        </TabsContent>
+        {pages.map((page) => (
+          <TabsContent key={page.value} value={page.value} className="space-y-4">
+            <page.component />
+          </TabsContent>
+        ))}
       </Tabs>
 
       <div className="mt-8">
