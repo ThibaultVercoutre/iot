@@ -4,13 +4,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AlertSensor, AlertSensorResponse, getAlertSensor, getAllSensorsWithDevices, updateAlertSensor } from "@/services/userService"
-import { User } from "@/types/sensors"
 
-interface SelectAlertSensorProps {
-  user: User | null;
-}
-
-export default function SelectAlertSensor({ user }: SelectAlertSensorProps) {
+export default function SelectAlertSensor() {
   const [sensors, setSensors] = useState<AlertSensor[]>([]);
   const [selectedSensorId, setSelectedSensorId] = useState<string | null>(null);
   const [alertSensorInfo, setAlertSensorInfo] = useState<AlertSensorResponse | null>(null);
