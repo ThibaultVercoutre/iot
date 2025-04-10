@@ -1,5 +1,6 @@
 import { SensorWithData } from '@/types/sensors'
 import { calculateDateRange } from './deviceService'
+import { TimePeriod } from '@/lib/time-utils'
 
 const getToken = (): string => {
   const token = document.cookie
@@ -47,7 +48,7 @@ export const deleteSensor = async (sensorId: number): Promise<void> => {
   }
 }
 
-export const getDeviceSensors = async (deviceId: number, period: string, timeOffset: number = 0): Promise<SensorWithData[]> => {
+export const getDeviceSensors = async (deviceId: number, period: TimePeriod, timeOffset: number = 0): Promise<SensorWithData[]> => {
   const token = getToken()
 
   // Calculer les dates de début et de fin
