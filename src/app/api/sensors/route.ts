@@ -74,8 +74,6 @@ export async function GET(request: Request) {
           break;
       }
     }
-    
-    console.log(`Récupération des données du ${startDate.toISOString()} au ${endDate.toISOString()}`);
 
     // Récupérer l'utilisateur à partir du token
     const token = request.headers.get("Authorization")?.split(" ")[1];
@@ -153,7 +151,6 @@ export async function GET(request: Request) {
         }
       }
     });
-    
 
     // Limiter le nombre de données historiques à 1440 points maximum par capteur
     const MAX_POINTS = 1440;
@@ -184,12 +181,6 @@ export async function GET(request: Request) {
       return sensor;
     });
 
-    console.log('Capteurs récupérés de la BDD:', sensors.map(s => ({
-      id: s.id,
-      name: s.name,
-      type: s.type,
-      threshold: s.threshold
-    })));
 
     // Préparer la réponse avec la structure modifiée
     const response = sensors.map(sensor => ({
@@ -210,10 +201,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    console.log('Données reçues:', body);
 
     const { name, type, isBinary, deviceId, threshold } = sensorSchema.parse(body);
-    console.log('Données validées:', { name, type, isBinary, deviceId, threshold });
 
     // Récupérer l'utilisateur à partir du token
     const token = request.headers.get("Authorization")?.split(" ")[1];
@@ -279,7 +268,6 @@ export async function POST(request: Request) {
       }
     });
 
-    console.log('Capteur créé avec succès:', sensor);
     return NextResponse.json(sensor);
   } catch (error) {
     console.error("Erreur détaillée:", error);
