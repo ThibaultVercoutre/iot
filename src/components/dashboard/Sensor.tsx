@@ -113,6 +113,7 @@ export function Sensor({
             viewMode={viewMode}
             selectedPeriod={selectedPeriod}
             timeOffset={timeOffset}
+            activeAlerts={activeAlerts}
           />
         ) : (
           <div className="text-gray-500">Aucune donnée disponible</div>

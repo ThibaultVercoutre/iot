@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import SensorChart from "@/components/dashboard/SensorChart"
 import { formatValue, getSensorColor } from "@/lib/utils"
 import { SensorData, SensorWithData, User } from "@/types/sensors"
+import { AlertLog } from "@/services/alertService"
 
 interface SensorDatasProps {
   sensor: SensorWithData
@@ -14,7 +15,8 @@ interface SensorDatasProps {
   onThresholdChange: (sensorId: number, value: string) => Promise<void>
   viewMode: string
   selectedPeriod: string
-  timeOffset?: number
+  timeOffset?: number,
+  activeAlerts: AlertLog[]
 }
 
 export function SensorDatas({
@@ -26,16 +28,17 @@ export function SensorDatas({
   onThresholdChange,
   viewMode,
   selectedPeriod,
-  timeOffset = 0
+  timeOffset = 0,
+  activeAlerts
 }: SensorDatasProps) {
   return (
     <div className="flex flex-col gap-4">
       <div>
         <div 
           className={`text-4xl font-bold mb-2 ${
-            user?.alertsEnabled && sensor.isInAlert ? 'text-red-500' : ''
+            user?.alertsEnabled && activeAlerts.some(alert => alert.sensor.id === sensor.id && alert.isActive) ? 'text-red-500' : ''
           }`} 
-          style={{ color: user?.alertsEnabled && sensor.isInAlert ? undefined : getSensorColor(sensor.type) }}
+          style={{ color: user?.alertsEnabled && activeAlerts.some(alert => alert.sensor.id === sensor.id && alert.isActive) ? undefined : getSensorColor(sensor.type) }}
         >
           {latestData ? formatValue(sensor, latestData.value) : 'N/A'}
         </div>
