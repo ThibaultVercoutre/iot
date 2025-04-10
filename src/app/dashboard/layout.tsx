@@ -22,6 +22,9 @@ export default function DashboardLayout({
             </div>
             <div className="flex items-center">
               <Button variant="outline" asChild>
+                <Link href="/dashboard/account">Mon compte</Link>
+              </Button>
+              <Button variant="outline" asChild>
                 <Link href="/">Déconnexion</Link>
               </Button>
             </div>
