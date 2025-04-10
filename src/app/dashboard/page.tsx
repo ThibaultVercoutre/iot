@@ -11,6 +11,7 @@ import { DashboardFilters } from "../../components/dashboard/DashboardFilters"
 import { Device } from "../../components/dashboard/Device"
 import { verifyAuth, getUser } from "@/services/authService"
 import { getDevicesWithSensors } from "@/services/deviceService"
+import { getAlertLogs, AlertLog } from "@/services/alertService"
 import { Device as DeviceType, User } from "@/types/sensors"
 
 export default function Dashboard() {
@@ -18,6 +19,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [devices, setDevices] = useState<DeviceType[]>([])
   const [user, setUser] = useState<User | null>(null)
+  const [activeAlerts, setActiveAlerts] = useState<AlertLog[]>([])
   const [selectedPeriod, setSelectedPeriod] = useState<'1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month'>('day')
   const [selectedType, setSelectedType] = useState<SensorType | 'all'>('all')
   const [alertFilter, setAlertFilter] = useState<'all' | 'alert'>('all')
@@ -48,6 +50,24 @@ export default function Dashboard() {
     localStorage.setItem('dashboardTimeOffset', timeOffset.toString())
   }, [selectedPeriod, selectedType, alertFilter, viewMode, timeOffset])
 
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      try {
+        const alerts = await getAlertLogs(true) // Récupérer uniquement les alertes actives
+        setActiveAlerts(alerts)
+      } catch (error) {
+        console.error("Erreur lors de la récupération des alertes :", error)
+      }
+    }
+
+    if (!isLoading) {
+      fetchAlerts()
+      // Rafraîchir les données toutes les 10 secondes
+      const alertsInterval = setInterval(fetchAlerts, 10000)
+      return () => clearInterval(alertsInterval)
+    }
+  }, [isLoading])
+
   // Filtrer les devices en fonction des filtres sélectionnés
   const filteredDevices = devices.filter(device => {
     // Filtrer par type de capteur
@@ -58,7 +78,10 @@ export default function Dashboard() {
     
     // Filtrer par état d'alerte
     if (alertFilter === 'alert') {
-      const hasAlertSensor = device.sensors.some(sensor => sensor.isInAlert)
+      // Utiliser les données d'alerte du service au lieu de historicalData
+      const hasAlertSensor = device.sensors.some(sensor => {
+        return activeAlerts.some(alert => alert.sensor.id === sensor.id && alert.isActive)
+      })
       if (!hasAlertSensor) return false
     }
     
@@ -124,6 +147,23 @@ export default function Dashboard() {
     }
   }, [selectedPeriod, timeOffset])
 
+  // Mettre à jour l'état d'alerte des capteurs en fonction des alertes actives
+  useEffect(() => {
+    if (activeAlerts.length > 0 && devices.length > 0) {
+      const updatedDevices = devices.map(device => {
+        const updatedSensors = device.sensors.map(sensor => {
+          // Vérifier si le capteur a une alerte active
+          const isInAlert = activeAlerts.some(
+            alert => alert.sensor.id === sensor.id && alert.isActive
+          )
+          return { ...sensor, isInAlert }
+        })
+        return { ...device, sensors: updatedSensors }
+      })
+      setDevices(updatedDevices)
+    }
+  }, [activeAlerts, devices])
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -138,7 +178,7 @@ export default function Dashboard() {
         <AlertStatus alertsEnabled={user.alertsEnabled} />
       )}
       
-      <ActiveAlerts />
+      <ActiveAlerts alerts={activeAlerts} />
       
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Tableau de bord des capteurs</h1>
