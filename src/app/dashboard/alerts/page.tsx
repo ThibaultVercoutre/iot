@@ -40,17 +40,15 @@ export default function AlertsHistory() {
   }, [router])
 
   useEffect(() => {
-    setIsLoadingOnlyActive(true)
     const fetchAlerts = async () => {
+      setIsLoading(true)
       try {
         const alerts = await getAlertLogs()
-        setAlertLogs(showOnlyActive ? alerts.filter(alert => alert.isActive) : alerts)
+        setAlertLogs(alerts)
         setIsLoading(false)
-        setIsLoadingOnlyActive(false)
       } catch (error) {
         console.error("Erreur lors de la récupération des alertes :", error)
         setIsLoading(false)
-        setIsLoadingOnlyActive(false)
       }
     }
 
@@ -61,7 +59,25 @@ export default function AlertsHistory() {
       const interval = setInterval(fetchAlerts, 10000)
       return () => clearInterval(interval)
     }
-  }, [isLoading, showOnlyActive])
+  }, [isLoading])
+
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      setIsLoadingOnlyActive(true)
+      try {
+        const alerts = await getAlertLogs()
+        setAlertLogs(showOnlyActive ? alerts.filter(alert => alert.isActive) : alerts)
+        setIsLoadingOnlyActive(false)
+      } catch (error) {
+        console.error("Erreur lors de la récupération des alertes :", error)
+        setIsLoadingOnlyActive(false)
+      }
+    }
+
+    if (!isLoadingOnlyActive) {
+      fetchAlerts()
+    }
+  }, [showOnlyActive, isLoadingOnlyActive])
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen">Chargement...</div>
@@ -163,7 +179,7 @@ export default function AlertsHistory() {
               </TableBody>
             </Table>
           ) :
-            isLoadingOnlyActive || isLoading ? (
+            isLoading || isLoadingOnlyActive ? (
               <div className="text-center py-8 text-gray-500">
                 Chargement des alertes...
               </div>
