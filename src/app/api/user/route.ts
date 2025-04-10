@@ -71,6 +71,7 @@ export async function PATCH(request: Request) {
     const user = await prisma.user.update({
       where: { id: decoded.userId },
       data: {
+        alertsEnabled: data.alertsEnabled !== undefined ? data.alertsEnabled : undefined,
         dashboardPeriod: data.dashboardPeriod,
         dashboardViewMode: data.dashboardViewMode,
         dashboardSensorType: data.dashboardSensorType,

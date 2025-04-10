@@ -1,6 +1,7 @@
 import { getToken } from "@/services/authService";
 import { SensorType } from "@prisma/client";
 import { getDevicesWithSensors } from "@/services/deviceService";
+import { User } from "@/types/sensors";
 
 // Interface pour le capteur d'alerte avec des informations sur son appareil
 export interface AlertSensor {
@@ -69,6 +70,35 @@ export const updateAlertSensor = async (alertSensorId: number | null): Promise<A
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || "Erreur lors de la mise à jour du capteur d'alerte");
+  }
+
+  return await response.json();
+};
+
+/**
+ * Met à jour l'état d'activation des alertes de l'utilisateur
+ * @param enabled Le nouvel état des alertes (true = activées, false = désactivées)
+ * @returns L'utilisateur mis à jour
+ */
+export const updateAlertsEnabled = async (enabled: boolean): Promise<User> => {
+  const token = getToken();
+  
+  if (!token) {
+    throw new Error("Authentification requise");
+  }
+
+  const response = await fetch(`/api/user`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ alertsEnabled: enabled }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Erreur lors de la mise à jour de l'état des alertes");
   }
 
   return await response.json();

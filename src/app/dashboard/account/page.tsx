@@ -49,16 +49,6 @@ export default function AccountPage() {
     }
   }, [isLoading])
 
-  const handleToggleAlerts = async () => {
-    try {
-      // Simuler la mise à jour du statut des alertes
-      setUser(prev => prev ? { ...prev, alertsEnabled: !prev.alertsEnabled } : null)
-      // Ici, vous feriez un appel API pour mettre à jour la préférence utilisateur
-    } catch (error) {
-      console.error("Erreur lors de la mise à jour des préférences :", error)
-    }
-  }
-
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen">Chargement...</div>
   }
@@ -80,7 +70,7 @@ export default function AccountPage() {
         <PersonnalInformations user={user} />
 
         {/* Paramètres et préférences */}
-        <Settings user={user} onToggleAlerts={handleToggleAlerts} />
+        <Settings user={user} setUser={setUser}/>
 
         {/* Statistiques */}
         <Stats user={user} devices={devices} />
