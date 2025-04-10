@@ -14,6 +14,9 @@ export interface AlertLog {
     name: string
     type: SensorType
     isBinary: boolean
+    threshold: {
+      value: number
+    } | null
   }
 }
 
