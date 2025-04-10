@@ -8,65 +8,14 @@ import { SensorType } from '@prisma/client'
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Clock, AlertCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-
-// Types pour les alertes
-interface AlertLog {
-  id: number
-  startedAt: string
-  endedAt: string | null
-  duration: number | null
-  sensorValue: number
-  thresholdValue: number | null
-  isActive: boolean
-  sensor: {
-    id: number
-    name: string
-    type: SensorType
-    isBinary: boolean
-  }
-}
+import { verifyAuth } from "@/services/authService"
+import { getAlertLogs, formatDateTime, formatDuration, formatValue, AlertLog } from "@/services/alertService"
 
 // Configuration des couleurs par type de capteur
 const sensorColors: Record<SensorType, string> = {
   [SensorType.SOUND]: '#FF6B6B',
   [SensorType.VIBRATION]: '#4ECDC4',
   [SensorType.BUTTON]: '#45B7D1',
-}
-
-// Fonction pour formater la date
-const formatDateTime = (dateString: string) => {
-  const date = new Date(dateString)
-  return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`
-}
-
-// Fonction pour formater la durée
-const formatDuration = (seconds: number) => {
-  if (seconds < 60) {
-    return `${seconds} secondes`
-  }
-  if (seconds < 3600) {
-    const minutes = Math.floor(seconds / 60)
-    const remainingSeconds = seconds % 60
-    return `${minutes} minute${minutes > 1 ? 's' : ''} ${remainingSeconds > 0 ? `${remainingSeconds} s` : ''}`
-  }
-  
-  const hours = Math.floor(seconds / 3600)
-  const remainingMinutes = Math.floor((seconds % 3600) / 60)
-  return `${hours} heure${hours > 1 ? 's' : ''} ${remainingMinutes > 0 ? `${remainingMinutes} min` : ''}`
-}
-
-// Fonction pour formater la valeur selon le type
-const formatValue = (sensor: AlertLog['sensor'], value: number) => {
-  if (sensor.isBinary) {
-    return value === 1 ? 'ON' : 'OFF'
-  } else {
-    switch (sensor.type) {
-      case SensorType.SOUND:
-        return `${value} dB`
-      default:
-        return value.toString()
-    }
-  }
 }
 
 export default function AlertsHistory() {
@@ -76,27 +25,9 @@ export default function AlertsHistory() {
   const [showOnlyActive, setShowOnlyActive] = useState(false)
 
   useEffect(() => {
-    const verifyAuth = async () => {
+    const checkAuth = async () => {
       try {
-        const token = document.cookie
-          .split("; ")
-          .find(row => row.startsWith("auth-token="))
-          ?.split("=")[1]
-
-        if (!token) {
-          throw new Error("Pas de token")
-        }
-
-        const response = await fetch("/api/auth/verify", {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        })
-
-        if (!response.ok) {
-          throw new Error("Token invalide")
-        }
-
+        await verifyAuth()
         setIsLoading(false)
       } catch (error) {
         console.error("Erreur lors de la vérification de l'authentification :", error)
@@ -104,33 +35,14 @@ export default function AlertsHistory() {
       }
     }
 
-    verifyAuth()
+    checkAuth()
   }, [router])
 
   useEffect(() => {
     const fetchAlerts = async () => {
       try {
-        const token = document.cookie
-          .split("; ")
-          .find(row => row.startsWith("auth-token="))
-          ?.split("=")[1]
-
-        if (!token) {
-          throw new Error("Pas de token")
-        }
-
-        const response = await fetch(`/api/alerts`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        })
-        
-        if (!response.ok) {
-          throw new Error('Erreur lors de la récupération des alertes')
-        }
-        
-        const data = await response.json()
-        setAlertLogs(showOnlyActive ? data.filter((alert: AlertLog) => alert.isActive) : data)
+        const alerts = await getAlertLogs()
+        setAlertLogs(showOnlyActive ? alerts.filter(alert => alert.isActive) : alerts)
         setIsLoading(false)
       } catch (error) {
         console.error("Erreur lors de la récupération des alertes :", error)
@@ -138,13 +50,14 @@ export default function AlertsHistory() {
       }
     }
 
-    fetchAlerts()
-
-    // Rafraîchir les données toutes les 10 secondes
-    const interval = setInterval(fetchAlerts, 10000)
-
-    return () => clearInterval(interval)
-  }, [showOnlyActive])
+    if (!isLoading) {
+      fetchAlerts()
+      
+      // Rafraîchir les données toutes les 10 secondes
+      const interval = setInterval(fetchAlerts, 10000)
+      return () => clearInterval(interval)
+    }
+  }, [isLoading, showOnlyActive])
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen">Chargement...</div>
