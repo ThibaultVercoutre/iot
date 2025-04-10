@@ -74,7 +74,7 @@ export default function AlertsHistory() {
     }
   }, [showOnlyActive])
 
-  if (isLoading || isLoadingOnlyActive) {
+  if (isLoading) {
     return <div className="flex justify-center items-center h-screen">Chargement...</div>
   }
 
@@ -109,7 +109,11 @@ export default function AlertsHistory() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {alertLogs.length > 0 ? (
+          {isLoadingOnlyActive ? (
+            <div className="text-center py-8 text-gray-500">
+              Chargement des alertes...
+            </div>
+          ) : alertLogs.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -173,17 +177,11 @@ export default function AlertsHistory() {
                 ))}
               </TableBody>
             </Table>
-          ) :
-            isLoading || isLoadingOnlyActive ? (
-              <div className="text-center py-8 text-gray-500">
-                Chargement des alertes...
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                Aucune alerte {showOnlyActive ? "active" : ""} trouvée
-              </div>
-            )
-          }
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              Aucune alerte {showOnlyActive ? "active" : ""} trouvée
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
