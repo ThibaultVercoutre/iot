@@ -21,7 +21,7 @@ export const calculateDateRange = (period: TimePeriod, timeOffset: number = 0): 
   const endDate = new Date()
   if (timeOffset !== 0) {
     // Le décalage est en heures directement
-    endDate.setHours(endDate.getHours() + timeOffset)
+    endDate.setHours(endDate.getHours() - timeOffset)
   }
   
   // Date de début: en fonction de la période sélectionnée
