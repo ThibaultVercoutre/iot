@@ -20,7 +20,10 @@ export default function DashboardLayout({
                 </div>
               </div>
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" asChild>
+                <Link href="/dashboard/documentation">Documentation</Link>
+              </Button>
               <Button variant="outline" asChild>
                 <Link href="/dashboard/account">Mon compte</Link>
               </Button>
