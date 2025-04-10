@@ -22,7 +22,7 @@ export default function AlertsHistory() {
   const router = useRouter()
   const [alertLogs, setAlertLogs] = useState<AlertLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isLoadingOnlyActive, setIsLoadingOnlyActive] = useState(true)
+  const [isLoadingOnlyActive, setIsLoadingOnlyActive] = useState(false)
   const [showOnlyActive, setShowOnlyActive] = useState(false)
 
   useEffect(() => {
