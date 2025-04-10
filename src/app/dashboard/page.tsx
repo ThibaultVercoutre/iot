@@ -11,7 +11,7 @@ import { DashboardFilters } from "../../components/dashboard/DashboardFilters"
 import { Device } from "../../components/dashboard/Device"
 import { verifyAuth, getUser } from "@/services/authService"
 import { getDevicesWithSensors } from "@/services/deviceService"
-import { Device as DeviceType, SensorWithData, User } from "@/types/sensors"
+import { Device as DeviceType, User } from "@/types/sensors"
 
 export default function Dashboard() {
   const router = useRouter()
@@ -72,7 +72,7 @@ export default function Dashboard() {
         device.id === updatedDevice.id ? updatedDevice : device
       )
     )
-  }, [devices])
+  }, [])
 
   // Réinitialiser le décalage temporel lors du changement de période
   const handlePeriodChange = (period: '1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month') => {
