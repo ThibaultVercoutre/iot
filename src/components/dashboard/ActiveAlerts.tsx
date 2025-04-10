@@ -1,7 +1,6 @@
 "use client"
 
 import { AlertCircle } from "lucide-react"
-import { SensorWithData } from "@/types/sensors"
 import { AlertLog, getAlertLogs, formatValue, formatDateTime } from "@/services/alertService"
 import { useState, useEffect } from "react"
 
