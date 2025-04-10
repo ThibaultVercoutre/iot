@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
-
+import { SensorData } from "@/types/sensors";
 const prisma = new PrismaClient();
 
 // Fonction pour générer un ID unique court
@@ -134,9 +134,45 @@ export async function GET(request: Request) {
       },
     });
 
+    // Récupérer les dernières valeurs des capteurs
+    const lastValues = await prisma.sensor.findMany({
+      where: {
+        deviceId: {
+          in: await prisma.device.findMany({
+            where: { userId: decoded.userId },
+            select: { id: true }
+          }).then(devices => devices.map(d => d.id))
+        }
+      },
+      include: {
+        historicalData: {
+          orderBy: {
+            timestamp: "desc"
+          },
+          take: 1
+        }
+      }
+    });
+    
+
     // Limiter le nombre de données historiques à 1440 points maximum par capteur
     const MAX_POINTS = 1440;
     
+    // Créer un objet pour stocker les dernières valeurs des capteurs
+    const sensorLastValues = new Map<number, SensorData | undefined>();
+    
+    // Extraire les dernières valeurs des capteurs
+    lastValues.forEach(sensor => {
+      const lastData = sensor.historicalData[0] ? {
+        id: sensor.historicalData[0].id,
+        value: sensor.historicalData[0].value,
+        timestamp: sensor.historicalData[0].timestamp.toISOString(),
+        sensorId: sensor.historicalData[0].sensorId
+      } : undefined;
+      sensorLastValues.set(sensor.id, lastData);
+    });
+
+    // Traiter les capteurs
     sensors.map(sensor => {
       if (sensor.historicalData.length > MAX_POINTS) {
         // Calculer l'intervalle pour garder une répartition équitable
@@ -155,7 +191,13 @@ export async function GET(request: Request) {
       threshold: s.threshold
     })));
 
-    return NextResponse.json(sensors);
+    // Préparer la réponse avec la structure modifiée
+    const response = sensors.map(sensor => ({
+      ...sensor,
+      lastValue: sensorLastValues.get(sensor.id)
+    }));
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error("Erreur lors de la récupération des capteurs:", error);
     return NextResponse.json(

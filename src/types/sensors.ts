@@ -24,6 +24,7 @@ export interface SensorWithData extends Sensor {
     createdAt: string
     startData: SensorData
   }[]
+  lastValue?: SensorData
 }
 
 export interface Device {

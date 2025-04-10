@@ -43,9 +43,7 @@ export function Sensor({
     }
   }
 
-  const latestData = sensor.historicalData && sensor.historicalData.length > 0 
-    ? sensor.historicalData[0] 
-    : null
+  const latestData = sensor.lastValue ? sensor.lastValue : null
 
   return (
     <Card 
