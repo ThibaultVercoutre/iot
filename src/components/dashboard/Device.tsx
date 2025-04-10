@@ -10,10 +10,12 @@ import {
 } from "@/types/sensors"
 import { updateSensorThreshold, deleteSensor, getDeviceSensors } from "@/services/sensorService"
 import { AlertLog } from "@/services/alertService"
+import { TimePeriod } from "@/lib/time-utils"
+
 interface DeviceProps {
   device: DeviceType
   viewMode: 'grid' | 'list'
-  selectedPeriod: '1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month'
+  selectedPeriod: TimePeriod
   user: User | null
   onDeviceChange: (updatedDevice: DeviceType) => void
   timeOffset?: number

@@ -8,11 +8,12 @@ import { SensorWithData, User, getSensorColor } from "@/types/sensors"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { SensorDatas } from "./SensorDatas"
 import { AlertLog } from "@/services/alertService"
+import { TimePeriod } from "@/lib/time-utils"
 
 interface SensorProps {
   sensor: SensorWithData
   viewMode: 'grid' | 'list'
-  selectedPeriod: '1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month'
+  selectedPeriod: TimePeriod
   user: User | null
   onThresholdChange: (sensorId: number, value: string) => Promise<void>
   onDeleteSensor: (sensor: SensorWithData) => Promise<void>

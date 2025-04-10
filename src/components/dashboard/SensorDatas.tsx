@@ -5,6 +5,7 @@ import SensorChart from "@/components/dashboard/SensorChart"
 import { formatValue, getSensorColor } from "@/lib/utils"
 import { SensorData, SensorWithData, User } from "@/types/sensors"
 import { AlertLog } from "@/services/alertService"
+import { TimePeriod, getPeriodInHours } from "@/lib/time-utils"
 
 interface SensorDatasProps {
   sensor: SensorWithData
@@ -14,7 +15,7 @@ interface SensorDatasProps {
   setThresholdValue: (value: string) => void
   onThresholdChange: (sensorId: number, value: string) => Promise<void>
   viewMode: string
-  selectedPeriod: string
+  selectedPeriod: TimePeriod
   timeOffset?: number,
   activeAlerts: AlertLog[]
 }
@@ -92,13 +93,7 @@ export function SensorDatas({
           data={sensor.historicalData}
           label={sensor.name}
           color={getSensorColor(sensor.type)}
-          timeRange={selectedPeriod === 'week' ? 168 : // 7 jours * 24h
-                   selectedPeriod === 'month' ? 720 : // 30 jours * 24h
-                   selectedPeriod === '12h' ? 12 :
-                   selectedPeriod === '6h' ? 6 :
-                   selectedPeriod === '3h' ? 3 :
-                   selectedPeriod === '1h' ? 1 :
-                   24} // 24h par défaut (day)
+          timeRange={getPeriodInHours(selectedPeriod)}
           threshold={sensor.threshold?.value}
           isBinary={sensor.isBinary}
           timeOffset={timeOffset}
