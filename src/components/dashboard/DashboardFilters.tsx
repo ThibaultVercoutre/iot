@@ -186,6 +186,11 @@ export function DashboardFilters({
             
             <div className="text-sm px-2 min-w-[200px] text-center">
               {formatDate(startDate)} - {formatDate(endDate)}
+              {!isPresent && (
+                <div className="text-xs text-gray-500">
+                  {timeOffset !== 0 && formatTimeOffset(selectedPeriod, timeOffset)}
+                </div>
+              )}
             </div>
             
             <Button 
@@ -199,9 +204,6 @@ export function DashboardFilters({
             </Button>
           </>
         )}
-      </div>
-      <div className="text-sm text-muted-foreground">
-        {timeOffset !== 0 && formatTimeOffset(selectedPeriod, timeOffset)}
       </div>
     </div>
   )
