@@ -66,7 +66,7 @@ export default function SensorChart({ data, label, color, timeRange = 24, thresh
   }
   
   // Calculer l'heure la plus récente pour l'origine
-  const latestTime = new Date(Math.max(...data.map(d => new Date(d.timestamp).getTime())));
+  // const latestTime = new Date(Math.max(...data.map(d => new Date(d.timestamp).getTime())));
   const oldestAllowedTime = new Date(referenceTime.getTime() - (timeRange * 60 * 60 * 1000));
 
   // Récupérer la date la plus ancienne
