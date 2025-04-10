@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, User as UserIcon, Mail, Calendar, Bell, Settings, Shield, Edit } from "lucide-react"
+import { ArrowLeft, User as UserIcon, Calendar, Bell, Settings, Shield, Edit } from "lucide-react"
 import { verifyAuth, getUser } from "@/services/authService"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -71,25 +71,6 @@ export default function AccountPage() {
     return <div className="flex justify-center items-center h-screen">Chargement...</div>
   }
 
-  // Format de date simple sans dépendance externe
-  const formatDate = (date: Date): string => {
-    return date.toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-  }
-
-  const formatDateTime = (date: Date): string => {
-    return date.toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }
-
   return (
     <div className="container mx-auto p-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -133,7 +114,7 @@ export default function AccountPage() {
                 </dd>
               </div>
               <div className="flex flex-col">
-                <dt className="text-sm font-medium text-gray-500">Filtre d'alerte par défaut</dt>
+                <dt className="text-sm font-medium text-gray-500">Filtre d&apos;alerte par défaut</dt>
                 <dd className="text-lg flex items-center gap-2">
                   <Badge variant={user?.dashboardAlertFilter === 'alert' ? "destructive" : "outline"}>
                     {user?.dashboardAlertFilter === 'alert' ? 'Avec alertes' : 'Tous'}
@@ -164,10 +145,10 @@ export default function AccountPage() {
               <div className="space-y-1">
                 <Label htmlFor="alerts" className="flex items-center gap-2">
                   <Bell className="h-4 w-4" />
-                  Notifications d'alertes
+                  Notifications d&apos;alertes
                 </Label>
                 <p className="text-sm text-gray-500">
-                  Activez pour recevoir des notifications en cas d'alerte sur vos capteurs
+                  Activez pour recevoir des notifications en cas d&apos;alerte sur vos capteurs
                 </p>
               </div>
               <Switch 
@@ -196,7 +177,7 @@ export default function AccountPage() {
         {/* Statistiques */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Vue d'ensemble de votre installation</CardTitle>
+            <CardTitle>Vue d&apos;ensemble de votre installation</CardTitle>
             <CardDescription>Statistiques sur vos appareils et capteurs</CardDescription>
           </CardHeader>
           <CardContent>
