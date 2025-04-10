@@ -14,10 +14,10 @@ export default function DashboardLayout({
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <span className="text-xl font-bold">
+                <div className="flex items-center gap-2">
                   <Image src="/logoDashName.png" alt="Logo" width={32} height={32} />
-                    IoT Dashboard
-                  </span>
+                  <span className="text-xl font-bold">IoT Dashboard</span>
+                </div>
               </div>
             </div>
             <div className="flex items-center">
