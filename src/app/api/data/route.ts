@@ -8,34 +8,38 @@ export async function POST(request: Request) {
     const body = await request.json();
     const timestamp = new Date();
     
-    // Créer un tableau pour stocker toutes les promesses de création de données
-    const createPromises = [];
+    // Utiliser une transaction Prisma pour garantir la cohérence des données
+    const result = await prisma.$transaction(async (tx) => {
+      const createdData = [];
+      const processedSensors = [];
 
-    // Pour chaque capteur dans le payload
-    for (const [uniqueId, value] of Object.entries(body)) {
-      // Trouver le capteur correspondant à l'ID unique
-      const sensor = await prisma.sensor.findUnique({
-        where: { uniqueId },
-        include: {
-          threshold: true
-        }
-      });
+      // Pour chaque capteur dans le payload
+      for (const [uniqueId, value] of Object.entries(body)) {
+        // Trouver le capteur correspondant à l'ID unique
+        const sensor = await tx.sensor.findUnique({
+          where: { uniqueId },
+          include: {
+            threshold: true
+          }
+        });
 
-      if (sensor) {
+        if (!sensor) continue;
+        processedSensors.push(uniqueId);
+
         // Créer la donnée pour ce capteur
-        const createPromise = prisma.sensorData.create({
+        const sensorData = await tx.sensorData.create({
           data: {
             sensorId: sensor.id,
             value: Number(value),
             timestamp
           }
         });
-        createPromises.push(createPromise);
+        createdData.push(sensorData);
 
-        // Si le capteur a un seuil et n'est pas binaire, vérifier s'il faut créer une alerte
+        // Traiter la logique d'alerte
         if (sensor.threshold && !sensor.isBinary && Number(value) >= sensor.threshold.value) {
-          // Vérifier s'il y a déjà une alerte active
-          const activeAlert = await prisma.alertLog.findFirst({
+          // Vérifier s'il y a déjà une alerte active (en une seule requête)
+          const activeAlert = await tx.alertLog.findFirst({
             where: {
               sensorId: sensor.id,
               endDataId: null
@@ -44,18 +48,10 @@ export async function POST(request: Request) {
 
           // Si pas d'alerte active, en créer une
           if (!activeAlert) {
-            const alertData = await prisma.sensorData.create({
+            await tx.alertLog.create({
               data: {
                 sensorId: sensor.id,
-                value: Number(value),
-                timestamp
-              }
-            });
-
-            await prisma.alertLog.create({
-              data: {
-                sensorId: sensor.id,
-                startDataId: alertData.id,
+                startDataId: sensorData.id,
                 thresholdValue: sensor.threshold.value
               }
             });
@@ -63,26 +59,18 @@ export async function POST(request: Request) {
         }
         // Pour les capteurs binaires, créer une alerte si la valeur est 1
         else if (sensor.isBinary && Number(value) === 1) {
-          const alertData = await prisma.sensorData.create({
+          await tx.alertLog.create({
             data: {
               sensorId: sensor.id,
-              value: 1,
-              timestamp
-            }
-          });
-
-          await prisma.alertLog.create({
-            data: {
-              sensorId: sensor.id,
-              startDataId: alertData.id,
-              endDataId: alertData.id,
+              startDataId: sensorData.id,
+              endDataId: sensorData.id,
               thresholdValue: 1
             }
           });
         }
         // Pour les capteurs non-binaires, vérifier si une alerte doit être fermée
         else if (!sensor.isBinary && sensor.threshold && Number(value) < sensor.threshold.value) {
-          const activeAlert = await prisma.alertLog.findFirst({
+          const activeAlert = await tx.alertLog.findFirst({
             where: {
               sensorId: sensor.id,
               endDataId: null
@@ -90,27 +78,29 @@ export async function POST(request: Request) {
           });
 
           if (activeAlert) {
-            const endData = await prisma.sensorData.create({
-              data: {
-                sensorId: sensor.id,
-                value: Number(value),
-                timestamp
-              }
-            });
-
-            await prisma.alertLog.update({
+            await tx.alertLog.update({
               where: { id: activeAlert.id },
-              data: { endDataId: endData.id }
+              data: { endDataId: sensorData.id }
             });
           }
         }
       }
-    }
 
-    // Attendre que toutes les données soient créées
-    await Promise.all(createPromises);
+      return { 
+        created: createdData.length,
+        processedSensors
+      };
+    }, {
+      // Options de transaction pour augmenter le timeout si nécessaire
+      maxWait: 5000, // 5s de temps d'attente max pour acquérir une connexion
+      timeout: 10000 // 10s de timeout pour la transaction
+    });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ 
+      success: true,
+      processed: result.created,
+      sensors: result.processedSensors 
+    });
   } catch (error) {
     console.error("Erreur lors de la création des données:", error);
     return NextResponse.json(

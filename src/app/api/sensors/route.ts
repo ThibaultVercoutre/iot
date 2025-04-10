@@ -88,13 +88,14 @@ export async function GET(request: Request) {
       userId: number;
     };
 
+    // Constante pour limiter les points
+    const MAX_POINTS = 1440;
+
+    // Optimisation: Utiliser une seule requête avec relation nested pour éviter les requêtes N+1
     const sensors = await prisma.sensor.findMany({
       where: {
-        deviceId: {
-          in: await prisma.device.findMany({
-            where: { userId: decoded.userId },
-            select: { id: true }
-          }).then(devices => devices.map(d => d.id))
+        device: {
+          userId: decoded.userId
         }
       },
       include: {
@@ -108,6 +109,8 @@ export async function GET(request: Request) {
           orderBy: {
             timestamp: "desc",
           },
+          // Récupérer un peu plus que nécessaire pour permettre l'échantillonnage plus intelligent
+          take: MAX_POINTS * 2,
         },
         threshold: true,
         alertLogs: {
@@ -132,34 +135,35 @@ export async function GET(request: Request) {
       },
     });
 
-    // Récupérer les dernières valeurs des capteurs
-    const lastValues = await prisma.sensor.findMany({
+    // Optimisation: Récupérer les dernières valeurs en une seule requête
+    const sensorsWithLastValue = await prisma.sensor.findMany({
       where: {
-        deviceId: {
-          in: await prisma.device.findMany({
-            where: { userId: decoded.userId },
-            select: { id: true }
-          }).then(devices => devices.map(d => d.id))
+        device: {
+          userId: decoded.userId
         }
       },
-      include: {
+      select: {
+        id: true,
         historicalData: {
           orderBy: {
             timestamp: "desc"
           },
-          take: 1
+          take: 1,
+          select: {
+            id: true,
+            value: true,
+            timestamp: true,
+            sensorId: true
+          }
         }
       }
     });
-
-    // Limiter le nombre de données historiques à 1440 points maximum par capteur
-    const MAX_POINTS = 1440;
     
-    // Créer un objet pour stocker les dernières valeurs des capteurs
+    // Créer un Map pour lookup rapide
     const sensorLastValues = new Map<number, SensorData | undefined>();
     
     // Extraire les dernières valeurs des capteurs
-    lastValues.forEach(sensor => {
+    sensorsWithLastValue.forEach(sensor => {
       const lastData = sensor.historicalData[0] ? {
         id: sensor.historicalData[0].id,
         value: sensor.historicalData[0].value,
@@ -169,26 +173,38 @@ export async function GET(request: Request) {
       sensorLastValues.set(sensor.id, lastData);
     });
 
-    // Traiter les capteurs
-    sensors.map(sensor => {
+    // Échantillonnage intelligent des données historiques
+    const processedSensors = sensors.map(sensor => {
       if (sensor.historicalData.length > MAX_POINTS) {
-        // Calculer l'intervalle pour garder une répartition équitable
-        const interval = Math.floor(sensor.historicalData.length / MAX_POINTS);
+        // Optimisation: Utiliser un échantillonnage plus intelligent pour préserver les tendances
+        // Méthode simple: diviser les données en MAX_POINTS segments et prendre un point représentatif par segment
+        const segmentSize = sensor.historicalData.length / MAX_POINTS;
+        const sampledData = [];
         
-        // Filtrer les données pour garder que les points à intervalles réguliers
-        sensor.historicalData = sensor.historicalData.filter((_, index) => index % interval === 0);
+        for (let i = 0; i < MAX_POINTS; i++) {
+          const startIdx = Math.floor(i * segmentSize);
+          const endIdx = Math.floor((i + 1) * segmentSize);
+          
+          // Si le segment contient des données, prendre le point du milieu
+          if (startIdx < sensor.historicalData.length) {
+            const midIdx = Math.min(
+              Math.floor(startIdx + (endIdx - startIdx) / 2),
+              sensor.historicalData.length - 1
+            );
+            sampledData.push(sensor.historicalData[midIdx]);
+          }
+        }
+        
+        // Remplacer les données historiques par l'échantillon
+        sensor.historicalData = sampledData;
       }
-      return sensor;
+      return {
+        ...sensor,
+        lastValue: sensorLastValues.get(sensor.id)
+      };
     });
 
-
-    // Préparer la réponse avec la structure modifiée
-    const response = sensors.map(sensor => ({
-      ...sensor,
-      lastValue: sensorLastValues.get(sensor.id)
-    }));
-
-    return NextResponse.json(response);
+    return NextResponse.json(processedSensors);
   } catch (error) {
     console.error("Erreur lors de la récupération des capteurs:", error);
     return NextResponse.json(
