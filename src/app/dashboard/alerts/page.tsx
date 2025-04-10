@@ -41,7 +41,6 @@ export default function AlertsHistory() {
 
   useEffect(() => {
     const fetchAlerts = async () => {
-      setIsLoading(true)
       try {
         const alerts = await getAlertLogs()
         setAlertLogs(alerts)
