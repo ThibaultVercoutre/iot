@@ -136,16 +136,11 @@ export default function Dashboard() {
     // Exécuter fetchData immédiatement
     fetchData()
 
-    // Configurer l'intervalle pour exécuter fetchData toutes les secondes (uniquement si timeOffset = 0)
-    let interval: NodeJS.Timeout | null = null
-    if (timeOffset === 0) {
-      interval = setInterval(fetchData, 1000)
-    }
+    // Configurer l'intervalle pour exécuter fetchData toutes les secondes
+    const interval = setInterval(fetchData, 1000)
 
     // Nettoyer l'intervalle lors du démontage du composant
-    return () => {
-      if (interval) clearInterval(interval)
-    }
+    return () => clearInterval(interval)
   }, [selectedPeriod, timeOffset])
 
   // Mettre à jour l'état d'alerte des capteurs en fonction des alertes actives

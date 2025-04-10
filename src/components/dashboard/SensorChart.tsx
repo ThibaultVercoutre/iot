@@ -60,14 +60,14 @@ export default function SensorChart({ data, label, color, timeRange = 24, thresh
   const currentTime = new Date();
   const referenceTime = new Date(currentTime);
   
-  if (timeOffset !== 0) {
-    // Appliquer le décalage temporel directement (positif ou négatif)
-    referenceTime.setHours(referenceTime.getHours() + timeOffset);
+  if (timeOffset > 0) {
+    // Décaler la référence temporelle en fonction de la période sélectionnée
+    referenceTime.setHours(referenceTime.getHours() - (timeRange * timeOffset));
   }
   
   // Calculer l'heure la plus récente pour l'origine
-  // const latestTime = new Date(Math.max(...data.map(d => new Date(d.timestamp).getTime())));
-  const oldestAllowedTime = new Date(referenceTime.getTime() - (timeRange * 60 * 60 * 1000));
+  const latestTime = new Date(Math.max(...data.map(d => new Date(d.timestamp).getTime())));
+  const oldestAllowedTime = new Date(latestTime.getTime() - (timeRange * 60 * 60 * 1000));
 
   // Récupérer la date la plus ancienne
   const oldestTime = new Date(Math.min(...data.map(d => new Date(d.timestamp).getTime())));
