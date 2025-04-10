@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Home, AlertCircle, Settings, PieChart, Tablet, Bell, Info, Plus, Sliders } from "lucide-react"
+import { ArrowLeft, Home, AlertCircle, Settings, PieChart, Tablet, Bell, Info, Plus } from "lucide-react"
 
 export default function DocumentationPage() {
   const router = useRouter()
@@ -146,7 +146,7 @@ export default function DocumentationPage() {
                 <p><strong>1.</strong> Cliquez sur le bouton <span className="bg-muted px-2 py-1 rounded inline-flex items-center text-xs"><Plus className="h-3 w-3 mr-1" /> Ajouter un appareil</span> dans le tableau de bord.</p>
                 <p><strong>2.</strong> Remplissez les informations requises:
                   <ul className="list-disc pl-5 mt-1">
-                    <li>Nom de l&apos;appareil (ex: "Capteur salon")</li>
+                    <li>Nom de l&apos;appareil (ex: &quot;Capteur salon&quot;)</li>
                     <li>Join EUI (fourni avec votre appareil)</li>
                     <li>Dev EUI (fourni avec votre appareil)</li>
                   </ul>
@@ -221,12 +221,12 @@ export default function DocumentationPage() {
 
               <h3 className="text-lg font-medium">Filtrer les alertes</h3>
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p>Utilisez le bouton "Alertes actives uniquement" pour filtrer et n&apos;afficher que les alertes actuellement actives.</p>
+                <p>Utilisez le bouton &quot;Alertes actives uniquement&quot; pour filtrer et n&apos;afficher que les alertes actuellement actives.</p>
               </div>
 
               <h3 className="text-lg font-medium">Activer/désactiver les notifications d&apos;alertes</h3>
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p>Dans la page Compte, sous "Paramètres", vous pouvez:
+                <p>Dans la page Compte, sous &quot;Paramètres&quot;, vous pouvez:
                   <ul className="list-disc pl-5 mt-1">
                     <li>Activer/désactiver les notifications d&apos;alertes</li>
                     <li>Sélectionner un capteur (généralement un bouton) qui pourra activer/désactiver les alertes</li>
@@ -270,7 +270,7 @@ export default function DocumentationPage() {
                 <ul className="list-disc pl-5 mt-1">
                   <li>Le capteur d&apos;alerte est un capteur physique (généralement un bouton) qui peut contrôler l&apos;activation/désactivation des alertes</li>
                   <li>Sélectionnez un capteur dans la liste déroulante pour le définir comme capteur d&apos;alerte</li>
-                  <li>Sélectionnez "Aucun capteur" pour désactiver cette fonctionnalité</li>
+                  <li>Sélectionnez &quot;Aucun capteur&quot; pour désactiver cette fonctionnalité</li>
                 </ul>
               </div>
 
