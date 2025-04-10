@@ -11,17 +11,18 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
+import { TimePeriod, formatTimeOffset } from "@/lib/time-utils"
 
 interface DashboardFiltersProps {
-  selectedPeriod: '1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month'
+  selectedPeriod: TimePeriod
   selectedType: SensorType | 'all'
   alertFilter: 'all' | 'alert'
   viewMode: 'grid' | 'list'
-  onPeriodChange: (value: '1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month') => void
-  onTypeChange: (value: SensorType | 'all') => void
-  onAlertFilterChange: (value: 'all' | 'alert') => void
-  onViewModeChange: (value: 'grid' | 'list') => void
-  timeOffset?: number
+  onPeriodChange: (period: TimePeriod) => void
+  onTypeChange: (type: SensorType | 'all') => void
+  onAlertFilterChange: (filter: 'all' | 'alert') => void
+  onViewModeChange: (mode: 'grid' | 'list') => void
+  timeOffset: number
   onTimeOffsetChange?: (offset: number) => void
 }
 
@@ -185,17 +186,6 @@ export function DashboardFilters({
             
             <div className="text-sm px-2 min-w-[200px] text-center">
               {formatDate(startDate)} - {formatDate(endDate)}
-              {!isPresent && (
-                <div className="text-xs text-gray-500">
-                  (Décalage: -{timeOffset} {
-                    selectedPeriod === '1h' ? 'heure' : 
-                    selectedPeriod === '3h' || selectedPeriod === '6h' || selectedPeriod === '12h' ? 'heures' :
-                    selectedPeriod === 'day' ? 'jour' :
-                    selectedPeriod === 'week' ? 'semaine' : 'mois'
-                  }{timeOffset > 1 && selectedPeriod !== '1h' && selectedPeriod !== '3h' && 
-                    selectedPeriod !== '6h' && selectedPeriod !== '12h' ? 's' : ''})
-                </div>
-              )}
             </div>
             
             <Button 
@@ -209,6 +199,9 @@ export function DashboardFilters({
             </Button>
           </>
         )}
+      </div>
+      <div className="text-sm text-muted-foreground">
+        {timeOffset !== 0 && formatTimeOffset(selectedPeriod, timeOffset)}
       </div>
     </div>
   )

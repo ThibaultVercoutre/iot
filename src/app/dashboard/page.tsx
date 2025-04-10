@@ -13,6 +13,7 @@ import { verifyAuth, getUser } from "@/services/authService"
 import { getDevicesWithSensors } from "@/services/deviceService"
 import { getAlertLogs, AlertLog } from "@/services/alertService"
 import { Device as DeviceType, User } from "@/types/sensors"
+import { TimePeriod } from "@/lib/time-utils"
 
 export default function Dashboard() {
   const router = useRouter()
@@ -20,7 +21,7 @@ export default function Dashboard() {
   const [devices, setDevices] = useState<DeviceType[]>([])
   const [user, setUser] = useState<User | null>(null)
   const [activeAlerts, setActiveAlerts] = useState<AlertLog[]>([])
-  const [selectedPeriod, setSelectedPeriod] = useState<'1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month'>('day')
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('day')
   const [selectedType, setSelectedType] = useState<SensorType | 'all'>('all')
   const [alertFilter, setAlertFilter] = useState<'all' | 'alert'>('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
@@ -34,7 +35,7 @@ export default function Dashboard() {
     const savedViewMode = localStorage.getItem('dashboardViewMode')
     const savedTimeOffset = localStorage.getItem('dashboardTimeOffset')
 
-    if (savedPeriod) setSelectedPeriod(savedPeriod as '1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month')
+    if (savedPeriod) setSelectedPeriod(savedPeriod as TimePeriod)
     if (savedType) setSelectedType(savedType as SensorType | 'all')
     if (savedAlertFilter) setAlertFilter(savedAlertFilter as 'all' | 'alert')
     if (savedViewMode) setViewMode(savedViewMode as 'grid' | 'list')
@@ -98,7 +99,7 @@ export default function Dashboard() {
   }, [])
 
   // Réinitialiser le décalage temporel lors du changement de période
-  const handlePeriodChange = (period: '1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month') => {
+  const handlePeriodChange = (period: TimePeriod) => {
     setSelectedPeriod(period)
     setTimeOffset(0) // Réinitialiser le décalage temporel
   }

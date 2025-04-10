@@ -1,5 +1,6 @@
 import { Device } from '@prisma/client'
 import { Device as DeviceType, SensorWithData } from '@/types/sensors'
+import { TimePeriod, getPeriodInHours } from '@/lib/time-utils'
 
 const getToken = (): string => {
   const token = document.cookie
@@ -14,27 +15,13 @@ const getToken = (): string => {
   return token
 }
 
-// Fonction pour obtenir la période en heures
-export const getPeriodInHours = (period: string): number => {
-  switch(period) {
-    case '1h': return 1
-    case '3h': return 3
-    case '6h': return 6
-    case '12h': return 12
-    case 'day': return 24
-    case 'week': return 24 * 7
-    case 'month': return 24 * 30
-    default: return 24
-  }
-}
-
 // Fonction pour calculer les dates de début et fin
-export const calculateDateRange = (period: string, timeOffset: number = 0): { startDate: Date, endDate: Date } => {
-  // Date de fin: si timeOffset=0, c'est maintenant, sinon on recule dans le temps
+export const calculateDateRange = (period: TimePeriod, timeOffset: number = 0): { startDate: Date, endDate: Date } => {
+  // Date de fin: maintenant + décalage (positif ou négatif)
   const endDate = new Date()
-  if (timeOffset > 0) {
-    const offsetInHours = getPeriodInHours(period) * timeOffset
-    endDate.setHours(endDate.getHours() - offsetInHours)
+  if (timeOffset !== 0) {
+    // Le décalage est en heures directement
+    endDate.setHours(endDate.getHours() + timeOffset)
   }
   
   // Date de début: en fonction de la période sélectionnée
@@ -61,7 +48,7 @@ export const getDevices = async (): Promise<Device[]> => {
   return response.json()
 }
 
-export const getDeviceSensors = async (deviceId: number, period: string, timeOffset: number = 0): Promise<SensorWithData[]> => {
+export const getDeviceSensors = async (deviceId: number, period: TimePeriod, timeOffset: number = 0): Promise<SensorWithData[]> => {
   const token = getToken()
   
   // Calculer les dates de début et de fin
@@ -84,7 +71,7 @@ export const getDeviceSensors = async (deviceId: number, period: string, timeOff
   return sensorsData.filter((sensor: SensorWithData) => sensor.deviceId === deviceId)
 }
 
-export const getDevicesWithSensors = async (period: string, timeOffset: number = 0): Promise<DeviceType[]> => {
+export const getDevicesWithSensors = async (period: TimePeriod, timeOffset: number = 0): Promise<DeviceType[]> => {
   const devices = await getDevices()
   
   return Promise.all(
