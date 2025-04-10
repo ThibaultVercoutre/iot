@@ -22,6 +22,7 @@ export default function AlertsHistory() {
   const router = useRouter()
   const [alertLogs, setAlertLogs] = useState<AlertLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingOnlyActive, setIsLoadingOnlyActive] = useState(true)
   const [showOnlyActive, setShowOnlyActive] = useState(false)
 
   useEffect(() => {
@@ -39,14 +40,17 @@ export default function AlertsHistory() {
   }, [router])
 
   useEffect(() => {
+    setIsLoadingOnlyActive(true)
     const fetchAlerts = async () => {
       try {
         const alerts = await getAlertLogs()
         setAlertLogs(showOnlyActive ? alerts.filter(alert => alert.isActive) : alerts)
         setIsLoading(false)
+        setIsLoadingOnlyActive(false)
       } catch (error) {
         console.error("Erreur lors de la récupération des alertes :", error)
         setIsLoading(false)
+        setIsLoadingOnlyActive(false)
       }
     }
 
@@ -158,11 +162,17 @@ export default function AlertsHistory() {
                 ))}
               </TableBody>
             </Table>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              Aucune alerte {showOnlyActive ? "active" : ""} trouvée
-            </div>
-          )}
+          ) :
+            isLoadingOnlyActive || isLoading ? (
+              <div className="text-center py-8 text-gray-500">
+                Chargement des alertes...
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                Aucune alerte {showOnlyActive ? "active" : ""} trouvée
+              </div>
+            )
+          }
         </CardContent>
       </Card>
     </div>
