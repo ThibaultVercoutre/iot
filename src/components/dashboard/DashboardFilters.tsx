@@ -1,6 +1,6 @@
 "use client"
 
-import { Filter, Clock } from "lucide-react"
+import { Filter, Clock, ChevronLeft, ChevronRight } from "lucide-react"
 import { SensorType } from '@prisma/client'
 import {
   Select,
@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react"
 
 interface DashboardFiltersProps {
   selectedPeriod: '1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month'
@@ -20,6 +21,8 @@ interface DashboardFiltersProps {
   onTypeChange: (value: SensorType | 'all') => void
   onAlertFilterChange: (value: 'all' | 'alert') => void
   onViewModeChange: (value: 'grid' | 'list') => void
+  timeOffset?: number
+  onTimeOffsetChange?: (offset: number) => void
 }
 
 export function DashboardFilters({
@@ -30,8 +33,78 @@ export function DashboardFilters({
   onPeriodChange,
   onTypeChange,
   onAlertFilterChange,
-  onViewModeChange
+  onViewModeChange,
+  timeOffset = 0,
+  onTimeOffsetChange
 }: DashboardFiltersProps) {
+  const [startDate, setStartDate] = useState<Date>(new Date())
+  const [endDate, setEndDate] = useState<Date>(new Date())
+  
+  // Calculer les dates de début et de fin en fonction de la période et du décalage
+  useEffect(() => {
+    const end = new Date()
+    let start = new Date()
+    
+    if (timeOffset !== 0) {
+      // Si on a un décalage, on décale les deux dates
+      end.setHours(end.getHours() - timeOffset * getPeriodInHours(selectedPeriod))
+      start = new Date(end)
+    }
+    
+    // Calculer la date de début en fonction de la période
+    if (selectedPeriod === '1h') start.setHours(start.getHours() - 1)
+    else if (selectedPeriod === '3h') start.setHours(start.getHours() - 3)
+    else if (selectedPeriod === '6h') start.setHours(start.getHours() - 6)
+    else if (selectedPeriod === '12h') start.setHours(start.getHours() - 12)
+    else if (selectedPeriod === 'day') start.setDate(start.getDate() - 1)
+    else if (selectedPeriod === 'week') start.setDate(start.getDate() - 7)
+    else if (selectedPeriod === 'month') start.setMonth(start.getMonth() - 1)
+    
+    setStartDate(start)
+    setEndDate(end)
+  }, [selectedPeriod, timeOffset])
+  
+  // Fonction pour obtenir la période en heures
+  const getPeriodInHours = (period: string): number => {
+    switch(period) {
+      case '1h': return 1
+      case '3h': return 3
+      case '6h': return 6
+      case '12h': return 12
+      case 'day': return 24
+      case 'week': return 24 * 7
+      case 'month': return 24 * 30
+      default: return 24
+    }
+  }
+  
+  // Formater une date en format court lisible
+  const formatDate = (date: Date): string => {
+    return date.toLocaleString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+  
+  // Gérer le changement de décalage temporel
+  const handleTimeNavigation = (direction: 'prev' | 'next') => {
+    if (!onTimeOffsetChange) return
+    
+    if (direction === 'prev') {
+      onTimeOffsetChange(timeOffset + 1)
+    } else {
+      // Ne pas aller au-delà du temps présent
+      if (timeOffset > 0) {
+        onTimeOffsetChange(timeOffset - 1)
+      }
+    }
+  }
+  
+  // Déterminer si on est au temps présent
+  const isPresent = timeOffset === 0
+  
   return (
     <div className="flex flex-wrap gap-4 w-full sm:w-auto">
       <div className="flex items-center gap-2">
@@ -97,6 +170,45 @@ export function DashboardFilters({
             </svg>
           )}
         </Button>
+      </div>
+      <div className="flex items-center gap-2">
+        {onTimeOffsetChange && (
+          <>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => handleTimeNavigation('prev')}
+              className="h-9 w-9"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            
+            <div className="text-sm px-2 min-w-[200px] text-center">
+              {formatDate(startDate)} - {formatDate(endDate)}
+              {!isPresent && (
+                <div className="text-xs text-gray-500">
+                  (Décalage: -{timeOffset} {
+                    selectedPeriod === '1h' ? 'heure' : 
+                    selectedPeriod === '3h' || selectedPeriod === '6h' || selectedPeriod === '12h' ? 'heures' :
+                    selectedPeriod === 'day' ? 'jour' :
+                    selectedPeriod === 'week' ? 'semaine' : 'mois'
+                  }{timeOffset > 1 && selectedPeriod !== '1h' && selectedPeriod !== '3h' && 
+                    selectedPeriod !== '6h' && selectedPeriod !== '12h' ? 's' : ''})
+                </div>
+              )}
+            </div>
+            
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => handleTimeNavigation('next')}
+              className="h-9 w-9"
+              disabled={isPresent}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </>
+        )}
       </div>
     </div>
   )

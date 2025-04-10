@@ -14,6 +14,7 @@ interface SensorDatasProps {
   onThresholdChange: (sensorId: number, value: string) => Promise<void>
   viewMode: string
   selectedPeriod: string
+  timeOffset?: number
 }
 
 export function SensorDatas({
@@ -24,7 +25,8 @@ export function SensorDatas({
   setThresholdValue,
   onThresholdChange,
   viewMode,
-  selectedPeriod
+  selectedPeriod,
+  timeOffset = 0
 }: SensorDatasProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -82,6 +84,7 @@ export function SensorDatas({
                    24} // 24h par défaut (day)
           threshold={sensor.threshold?.value}
           isBinary={sensor.isBinary}
+          timeOffset={timeOffset}
         />
       </div>
     </div>

@@ -15,6 +15,7 @@ interface SensorProps {
   user: User | null
   onThresholdChange: (sensorId: number, value: string) => Promise<void>
   onDeleteSensor: (sensor: SensorWithData) => Promise<void>
+  timeOffset?: number
 }
 
 export function Sensor({ 
@@ -23,7 +24,8 @@ export function Sensor({
   selectedPeriod, 
   user, 
   onThresholdChange,
-  onDeleteSensor 
+  onDeleteSensor,
+  timeOffset = 0
 }: SensorProps) {
   const [thresholdValue, setThresholdValue] = useState<string>(sensor.threshold?.value?.toString() ?? '')
   const [copiedId, setCopiedId] = useState<boolean>(false)
@@ -109,6 +111,7 @@ export function Sensor({
             onThresholdChange={onThresholdChange}
             viewMode={viewMode}
             selectedPeriod={selectedPeriod}
+            timeOffset={timeOffset}
           />
         ) : (
           <div className="text-gray-500">Aucune donnée disponible</div>

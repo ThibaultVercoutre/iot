@@ -46,10 +46,10 @@ export const deleteSensor = async (sensorId: number): Promise<void> => {
   }
 }
 
-export const getDeviceSensors = async (deviceId: number, period: string): Promise<SensorWithData[]> => {
+export const getDeviceSensors = async (deviceId: number, period: string, referenceDate?: string): Promise<SensorWithData[]> => {
   const token = getToken()
 
-  const response = await fetch(`/api/sensors?period=${period}`, {
+  const response = await fetch(`/api/sensors?period=${period}&referenceDate=${referenceDate}`, {
     headers: {
       "Authorization": `Bearer ${token}`
     }

@@ -44,9 +44,10 @@ import {
   timeRange?: number;
   threshold?: number;
   isBinary?: boolean;
+  timeOffset?: number;
 }
 
-export default function SensorChart({ data, label, color, timeRange = 24, threshold, isBinary = false }: SensorChartProps) {
+export default function SensorChart({ data, label, color, timeRange = 24, threshold, isBinary = false, timeOffset = 0 }: SensorChartProps) {
   if (data.length === 0) {
     return (
       <div className="w-full h-[200px] flex items-center justify-center text-gray-500">
@@ -55,19 +56,26 @@ export default function SensorChart({ data, label, color, timeRange = 24, thresh
     );
   }
 
+  // Calculer le moment de référence en fonction du décalage temporel
+  const currentTime = new Date();
+  const referenceTime = new Date(currentTime);
+  
+  if (timeOffset > 0) {
+    // Décaler la référence temporelle en fonction de la période sélectionnée
+    referenceTime.setHours(referenceTime.getHours() - (timeRange * timeOffset));
+  }
+  
   // Calculer l'heure la plus récente pour l'origine
   const latestTime = new Date(Math.max(...data.map(d => new Date(d.timestamp).getTime())));
   const oldestAllowedTime = new Date(latestTime.getTime() - (timeRange * 60 * 60 * 1000));
 
   // Récupérer la date la plus ancienne
   const oldestTime = new Date(Math.min(...data.map(d => new Date(d.timestamp).getTime())));
-
-  // Récupérer la date de maintenant
-  const currentTime = new Date();
   
   // Calculer xMin et xMax en arrondissant à l'heure la plus proche
-  const xMin = Math.floor((oldestTime.getTime() - currentTime.getTime()) / (1000 * 60 * 60));
-  const xMax = Math.round((latestTime.getTime() - currentTime.getTime()) / (1000 * 60 * 60));
+  // Mais maintenant par rapport à la référence temporelle et non au temps présent
+  const xMin = Math.floor((oldestTime.getTime() - referenceTime.getTime()) / (1000 * 60 * 60));
+  const xMax = Math.round((latestTime.getTime() - referenceTime.getTime()) / (1000 * 60 * 60));
 
   // Filtrer et trier les données dans la plage temporelle
   const sortedData = [...data]
@@ -78,7 +86,7 @@ export default function SensorChart({ data, label, color, timeRange = 24, thresh
       datasets: [{
         label,
         data: sortedData.map(d => ({
-          x: (new Date(d.timestamp).getTime() - currentTime.getTime()) / (1000 * 60 * 60),
+          x: (new Date(d.timestamp).getTime() - referenceTime.getTime()) / (1000 * 60 * 60),
           y: d.value
         })),
         backgroundColor: color,
@@ -95,6 +103,9 @@ export default function SensorChart({ data, label, color, timeRange = 24, thresh
       }]
     };
 
+    // Calculer les limites d'affichage en fonction du timeRange et du timeOffset
+    const displayMin = xMin < -timeRange ? xMin : -timeRange;
+    const displayMax = 0; // Fin du graphique alignée avec la référence temporelle
 
     const options = {
       responsive: true,
@@ -115,7 +126,7 @@ export default function SensorChart({ data, label, color, timeRange = 24, thresh
           intersect: false,
           callbacks: {
             title: (items: TooltipItem<'line'>[]) => {
-              const date = new Date(currentTime.getTime() + items[0].parsed.x * 1000 * 60 * 60);
+              const date = new Date(referenceTime.getTime() + items[0].parsed.x * 1000 * 60 * 60);
               return date.toLocaleString();
             },
             label: (item: TooltipItem<'line'>) => {
@@ -153,13 +164,24 @@ export default function SensorChart({ data, label, color, timeRange = 24, thresh
         x: {
           type: 'linear' as const,
           position: 'bottom' as const,
-          min: xMin,
-          max: xMax,
+          min: displayMin,
+          max: displayMax,
           ticks: {
             stepSize: timeRange <= 24 ? 1 : Math.ceil(timeRange / 12),
             callback: function(tickValue: string | number) {
               const value = Math.round(Number(tickValue));
-              return value === 0 ? 'maintenant' : `${value}h`;
+              const tickDate = new Date(referenceTime.getTime() + value * 1000 * 60 * 60);
+              
+              // Format différent en fonction du timeOffset
+              if (timeOffset === 0 && value === 0) {
+                return 'maintenant';
+              } else if (timeRange >= 24) {
+                // Pour les périodes de jour ou plus, afficher jour et heure
+                return `${tickDate.getDate()}/${tickDate.getMonth() + 1} ${tickDate.getHours()}h`;
+              } else {
+                // Pour les périodes en heures, afficher l'heure
+                return `${tickDate.getHours()}h${tickDate.getMinutes() > 0 ? tickDate.getMinutes() : ''}`;
+              }
             }
           },
           grid: {

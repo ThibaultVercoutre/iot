@@ -23,6 +23,7 @@ export default function Dashboard() {
   const [selectedType, setSelectedType] = useState<SensorType | 'all'>('all')
   const [alertFilter, setAlertFilter] = useState<'all' | 'alert'>('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [timeOffset, setTimeOffset] = useState<number>(0)
 
   // Restaurer les filtres depuis le localStorage
   useEffect(() => {
@@ -30,11 +31,13 @@ export default function Dashboard() {
     const savedType = localStorage.getItem('dashboardType')
     const savedAlertFilter = localStorage.getItem('dashboardAlertFilter')
     const savedViewMode = localStorage.getItem('dashboardViewMode')
+    const savedTimeOffset = localStorage.getItem('dashboardTimeOffset')
 
     if (savedPeriod) setSelectedPeriod(savedPeriod as '1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month')
     if (savedType) setSelectedType(savedType as SensorType | 'all')
     if (savedAlertFilter) setAlertFilter(savedAlertFilter as 'all' | 'alert')
     if (savedViewMode) setViewMode(savedViewMode as 'grid' | 'list')
+    if (savedTimeOffset) setTimeOffset(parseInt(savedTimeOffset, 10))
   }, [])
 
   // Sauvegarder les filtres dans le localStorage
@@ -43,7 +46,8 @@ export default function Dashboard() {
     localStorage.setItem('dashboardType', selectedType)
     localStorage.setItem('dashboardAlertFilter', alertFilter)
     localStorage.setItem('dashboardViewMode', viewMode)
-  }, [selectedPeriod, selectedType, alertFilter, viewMode])
+    localStorage.setItem('dashboardTimeOffset', timeOffset.toString())
+  }, [selectedPeriod, selectedType, alertFilter, viewMode, timeOffset])
 
   // Filtrer les devices en fonction des filtres sélectionnés
   const filteredDevices = devices.filter(device => {
@@ -80,6 +84,12 @@ export default function Dashboard() {
     setSensorsInAlert(alertSensors)
   }, [devices])
 
+  // Réinitialiser le décalage temporel lors du changement de période
+  const handlePeriodChange = (period: '1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month') => {
+    setSelectedPeriod(period)
+    setTimeOffset(0) // Réinitialiser le décalage temporel
+  }
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -97,9 +107,29 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Calculer la date de référence en fonction du décalage
+        let referenceDate = new Date()
+        
+        if (timeOffset > 0) {
+          // Calculer le nombre d'heures à soustraire en fonction de la période et du décalage
+          let hoursToSubtract = 0
+          
+          if (selectedPeriod === '1h') hoursToSubtract = timeOffset * 1
+          else if (selectedPeriod === '3h') hoursToSubtract = timeOffset * 3
+          else if (selectedPeriod === '6h') hoursToSubtract = timeOffset * 6
+          else if (selectedPeriod === '12h') hoursToSubtract = timeOffset * 12
+          else if (selectedPeriod === 'day') hoursToSubtract = timeOffset * 24
+          else if (selectedPeriod === 'week') hoursToSubtract = timeOffset * 24 * 7
+          else if (selectedPeriod === 'month') hoursToSubtract = timeOffset * 24 * 30
+          
+          referenceDate.setHours(referenceDate.getHours() - hoursToSubtract)
+        }
+        
+        const referenceDateString = referenceDate.toISOString()
+
         const [userData, devicesWithSensors] = await Promise.all([
           getUser(),
-          getDevicesWithSensors(selectedPeriod)
+          getDevicesWithSensors(selectedPeriod, referenceDateString)
         ])
         
         setUser(userData)
@@ -118,12 +148,17 @@ export default function Dashboard() {
     // Exécuter fetchData immédiatement
     fetchData()
 
-    // Configurer l'intervalle pour exécuter fetchData toutes les secondes
-    const interval = setInterval(fetchData, 1000)
+    // Configurer l'intervalle pour exécuter fetchData toutes les secondes (uniquement si timeOffset = 0)
+    let interval: NodeJS.Timeout | null = null
+    if (timeOffset === 0) {
+      interval = setInterval(fetchData, 1000)
+    }
 
     // Nettoyer l'intervalle lors du démontage du composant
-    return () => clearInterval(interval)
-  }, [selectedPeriod])
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [selectedPeriod, timeOffset])
 
   if (isLoading) {
     return (
@@ -151,10 +186,12 @@ export default function Dashboard() {
           selectedType={selectedType}
           alertFilter={alertFilter}
           viewMode={viewMode}
-          onPeriodChange={setSelectedPeriod}
+          onPeriodChange={handlePeriodChange}
           onTypeChange={setSelectedType}
           onAlertFilterChange={setAlertFilter}
           onViewModeChange={setViewMode}
+          timeOffset={timeOffset}
+          onTimeOffsetChange={setTimeOffset}
         />
       </div>
       
@@ -167,12 +204,32 @@ export default function Dashboard() {
             selectedPeriod={selectedPeriod}
             user={user}
             onDeviceChange={handleDeviceChange}
+            timeOffset={timeOffset}
           />
         ))}
         
         <AddDeviceDialog onDeviceAdded={async () => {
           try {
-            const devicesWithSensors = await getDevicesWithSensors(selectedPeriod)
+            // Calculer la date de référence
+            let referenceDate = new Date()
+            if (timeOffset > 0) {
+              // Utiliser la même logique que dans le useEffect
+              let hoursToSubtract = 0
+              
+              if (selectedPeriod === '1h') hoursToSubtract = timeOffset * 1
+              else if (selectedPeriod === '3h') hoursToSubtract = timeOffset * 3
+              else if (selectedPeriod === '6h') hoursToSubtract = timeOffset * 6
+              else if (selectedPeriod === '12h') hoursToSubtract = timeOffset * 12
+              else if (selectedPeriod === 'day') hoursToSubtract = timeOffset * 24
+              else if (selectedPeriod === 'week') hoursToSubtract = timeOffset * 24 * 7
+              else if (selectedPeriod === 'month') hoursToSubtract = timeOffset * 24 * 30
+              
+              referenceDate.setHours(referenceDate.getHours() - hoursToSubtract)
+            }
+            
+            const referenceDateString = referenceDate.toISOString()
+            
+            const devicesWithSensors = await getDevicesWithSensors(selectedPeriod, referenceDateString)
             setDevices(devicesWithSensors)
             
             // Filtrer les capteurs en alerte

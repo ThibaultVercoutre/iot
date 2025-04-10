@@ -30,10 +30,16 @@ export const getDevices = async (): Promise<Device[]> => {
   return response.json()
 }
 
-export const getDeviceSensors = async (deviceId: number, period: string): Promise<SensorWithData[]> => {
+export const getDeviceSensors = async (deviceId: number, period: string, referenceDate?: string): Promise<SensorWithData[]> => {
   const token = getToken()
   
-  const response = await fetch(`/api/sensors?period=${period}`, {
+  // Construire l'URL avec les paramètres
+  let url = `/api/sensors?period=${period}`
+  if (referenceDate) {
+    url += `&referenceDate=${encodeURIComponent(referenceDate)}`
+  }
+  
+  const response = await fetch(url, {
     headers: {
       "Authorization": `Bearer ${token}`
     }
@@ -47,12 +53,12 @@ export const getDeviceSensors = async (deviceId: number, period: string): Promis
   return sensorsData.filter((sensor: SensorWithData) => sensor.deviceId === deviceId)
 }
 
-export const getDevicesWithSensors = async (period: string): Promise<DeviceType[]> => {
+export const getDevicesWithSensors = async (period: string, referenceDate?: string): Promise<DeviceType[]> => {
   const devices = await getDevices()
   
   return Promise.all(
     devices.map(async (device) => {
-      const sensors = await getDeviceSensors(device.id, period)
+      const sensors = await getDeviceSensors(device.id, period, referenceDate)
       
       const sensorsWithAlertStatus = sensors.map((sensor) => {
         const latestData = sensor.historicalData[0]
