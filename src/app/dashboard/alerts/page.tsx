@@ -74,7 +74,7 @@ export default function AlertsHistory() {
     }
   }, [showOnlyActive])
 
-  if (isLoading) {
+  if (isLoading || isLoadingOnlyActive) {
     return <div className="flex justify-center items-center h-screen">Chargement...</div>
   }
 
