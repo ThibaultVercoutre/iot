@@ -154,9 +154,7 @@ export default function Dashboard() {
         <AlertStatus alertsEnabled={user.alertsEnabled} />
       )}
       
-      {user && user.alertsEnabled && sensorsInAlert.length > 0 && (
-        <ActiveAlerts />
-      )}
+      <ActiveAlerts />
       
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Tableau de bord des capteurs</h1>
