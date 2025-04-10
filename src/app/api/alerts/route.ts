@@ -6,6 +6,10 @@ const prisma = new PrismaClient();
 
 export async function GET(request: Request) {
   try {
+    // Vérifier si on doit filtrer uniquement les alertes actives
+    const url = new URL(request.url);
+    const activeOnly = url.searchParams.get('active') === 'true';
+
     // Récupérer l'utilisateur à partir du token
     const token = request.headers.get("Authorization")?.split(" ")[1];
     if (!token) {
@@ -38,7 +42,9 @@ export async function GET(request: Request) {
     // Récupérer les alertes des capteurs de l'utilisateur
     const alerts = await prisma.alertLog.findMany({
       where: {
-        sensorId: { in: sensorIds }
+        sensorId: { in: sensorIds },
+        // Ajouter la condition pour les alertes actives si nécessaire
+        ...(activeOnly ? { endData: null } : {})
       },
       include: {
         sensor: {
