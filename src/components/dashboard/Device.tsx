@@ -9,7 +9,7 @@ import {
   User
 } from "@/types/sensors"
 import { updateSensorThreshold, deleteSensor, getDeviceSensors } from "@/services/sensorService"
-
+import { AlertLog } from "@/services/alertService"
 interface DeviceProps {
   device: DeviceType
   viewMode: 'grid' | 'list'
@@ -17,9 +17,10 @@ interface DeviceProps {
   user: User | null
   onDeviceChange: (updatedDevice: DeviceType) => void
   timeOffset?: number
+  activeAlerts: AlertLog[]
 }
 
-export function Device({ device, viewMode, selectedPeriod, user, onDeviceChange, timeOffset = 0 }: DeviceProps) {
+export function Device({ device, viewMode, selectedPeriod, user, onDeviceChange, timeOffset = 0, activeAlerts }: DeviceProps) {
   const handleThresholdChange = async (sensorId: number, value: string) => {
     try {
       const numValue = parseFloat(value)
@@ -92,6 +93,7 @@ export function Device({ device, viewMode, selectedPeriod, user, onDeviceChange,
               onThresholdChange={handleThresholdChange}
               onDeleteSensor={handleDeleteSensor}
               timeOffset={timeOffset}
+              activeAlerts={activeAlerts}
             />
           ))}
           <AddSensorDialog 

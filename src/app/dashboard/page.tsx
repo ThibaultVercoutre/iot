@@ -207,6 +207,7 @@ export default function Dashboard() {
             user={user}
             onDeviceChange={handleDeviceChange}
             timeOffset={timeOffset}
+            activeAlerts={activeAlerts}
           />
         ))}
         

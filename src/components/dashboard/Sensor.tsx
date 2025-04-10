@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { SensorWithData, User, getSensorColor } from "@/types/sensors"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { SensorDatas } from "./SensorDatas"
+import { AlertLog } from "@/services/alertService"
 
 interface SensorProps {
   sensor: SensorWithData
@@ -16,6 +17,7 @@ interface SensorProps {
   onThresholdChange: (sensorId: number, value: string) => Promise<void>
   onDeleteSensor: (sensor: SensorWithData) => Promise<void>
   timeOffset?: number
+  activeAlerts: AlertLog[]
 }
 
 export function Sensor({ 
@@ -25,7 +27,8 @@ export function Sensor({
   user, 
   onThresholdChange,
   onDeleteSensor,
-  timeOffset = 0
+  timeOffset = 0,
+  activeAlerts
 }: SensorProps) {
   const [thresholdValue, setThresholdValue] = useState<string>(sensor.threshold?.value?.toString() ?? '')
   const [copiedId, setCopiedId] = useState<boolean>(false)
@@ -47,7 +50,7 @@ export function Sensor({
   return (
     <Card 
       className={`relative ${
-        user?.alertsEnabled && sensor.isInAlert 
+        user?.alertsEnabled && activeAlerts.some(alert => alert.sensor.id === sensor.id && alert.isActive)
           ? 'border-2 border-red-500 shadow-lg shadow-red-100' 
           : ''
       }`}
@@ -60,7 +63,7 @@ export function Sensor({
               style={{ backgroundColor: getSensorColor(sensor.type) }}
             />
             {sensor.name}
-            {user?.alertsEnabled && sensor.isInAlert && (
+            {user?.alertsEnabled && activeAlerts.some(alert => alert.sensor.id === sensor.id && alert.isActive) && (
               <AlertCircle className="w-5 h-5 text-red-500 ml-auto" />
             )}
           </div>
