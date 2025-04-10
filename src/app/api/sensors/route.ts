@@ -112,6 +112,20 @@ export async function GET(request: Request) {
       },
     });
 
+    // Limiter le nombre de données historiques à 1440 points maximum par capteur
+    const MAX_POINTS = 1440;
+    
+    sensors.map(sensor => {
+      if (sensor.historicalData.length > MAX_POINTS) {
+        // Calculer l'intervalle pour garder une répartition équitable
+        const interval = Math.floor(sensor.historicalData.length / MAX_POINTS);
+        
+        // Filtrer les données pour garder que les points à intervalles réguliers
+        sensor.historicalData = sensor.historicalData.filter((_, index) => index % interval === 0);
+      }
+      return sensor;
+    });
+
     console.log('Capteurs récupérés de la BDD:', sensors.map(s => ({
       id: s.id,
       name: s.name,
