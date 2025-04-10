@@ -30,11 +30,11 @@ export const getPeriodInHours = (period: string): number => {
 
 // Fonction pour calculer les dates de début et fin
 export const calculateDateRange = (period: string, timeOffset: number = 0): { startDate: Date, endDate: Date } => {
-  // Date de fin: maintenant + décalage (positif ou négatif)
+  // Date de fin: si timeOffset=0, c'est maintenant, sinon on recule dans le temps
   const endDate = new Date()
-  if (timeOffset !== 0) {
-    // Le décalage est en heures directement
-    endDate.setHours(endDate.getHours() + timeOffset)
+  if (timeOffset > 0) {
+    const offsetInHours = getPeriodInHours(period) * timeOffset
+    endDate.setHours(endDate.getHours() - offsetInHours)
   }
   
   // Date de début: en fonction de la période sélectionnée
