@@ -108,7 +108,7 @@ export default function Dashboard() {
     const fetchData = async () => {
       try {
         // Calculer la date de référence en fonction du décalage
-        let referenceDate = new Date()
+        const referenceDate = new Date()
         
         if (timeOffset > 0) {
           // Calculer le nombre d'heures à soustraire en fonction de la période et du décalage
@@ -211,7 +211,7 @@ export default function Dashboard() {
         <AddDeviceDialog onDeviceAdded={async () => {
           try {
             // Calculer la date de référence
-            let referenceDate = new Date()
+            const referenceDate = new Date()
             if (timeOffset > 0) {
               // Utiliser la même logique que dans le useEffect
               let hoursToSubtract = 0

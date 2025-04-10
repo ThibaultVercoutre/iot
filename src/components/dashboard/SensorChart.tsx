@@ -75,7 +75,9 @@ export default function SensorChart({ data, label, color, timeRange = 24, thresh
   // Calculer xMin et xMax en arrondissant à l'heure la plus proche
   // Mais maintenant par rapport à la référence temporelle et non au temps présent
   const xMin = Math.floor((oldestTime.getTime() - referenceTime.getTime()) / (1000 * 60 * 60));
-  const xMax = Math.round((latestTime.getTime() - referenceTime.getTime()) / (1000 * 60 * 60));
+  // Cette variable n'est plus utilisée depuis l'introduction de displayMin/displayMax
+  
+  // const xMax = Math.round((latestTime.getTime() - referenceTime.getTime()) / (1000 * 60 * 60));
 
   // Filtrer et trier les données dans la plage temporelle
   const sortedData = [...data]
