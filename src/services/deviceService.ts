@@ -2,6 +2,51 @@ import { Device } from '@prisma/client'
 import { Device as DeviceType, SensorWithData } from '@/types/sensors'
 import { TimePeriod, getPeriodInHours } from '@/lib/time-utils'
 
+// Cache pour stocker temporairement les résultats des requêtes
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  key: string;
+}
+
+// Durée de validité du cache (en ms)
+const CACHE_TTL = 500; // 5 secondes
+
+// Map de cache pour les différentes requêtes
+const requestCache = new Map<string, CacheEntry<any>>();
+
+// Fonction utilitaire pour gérer le cache
+function withCache<T>(key: string, fetchFn: () => Promise<T>, ttl = CACHE_TTL): Promise<T> {
+  const now = Date.now();
+  const cachedEntry = requestCache.get(key);
+  
+  // Si on a un résultat en cache qui n'est pas expiré, on le retourne
+  if (cachedEntry && (now - cachedEntry.timestamp) < ttl) {
+    console.log(`[Cache] Utilisation du cache pour: ${key}`);
+    return Promise.resolve(cachedEntry.data);
+  }
+  
+  // Sinon, on fait la requête et on met en cache
+  return fetchFn().then(data => {
+    requestCache.set(key, {
+      data,
+      timestamp: now,
+      key
+    });
+    return data;
+  });
+}
+
+// Nettoyer le cache périodiquement pour éviter les fuites mémoire
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of requestCache.entries()) {
+    if (now - entry.timestamp > CACHE_TTL * 2) {
+      requestCache.delete(key);
+    }
+  }
+}, CACHE_TTL * 5); // Nettoyage toutes les 25 secondes
+
 const getToken = (): string => {
   const token = document.cookie
     .split("; ")
@@ -32,74 +77,114 @@ export const calculateDateRange = (period: TimePeriod, timeOffset: number = 0): 
   return { startDate, endDate }
 }
 
-export const getDevices = async (): Promise<Device[]> => {
-  const token = getToken()
-  
-  const response = await fetch('/api/devices', {
-    headers: {
-      "Authorization": `Bearer ${token}`
-    }
-  })
+// Map pour suivre les requêtes en cours (éviter les requêtes dupliquées)
+const pendingRequests = new Map<string, Promise<any>>();
 
-  if (!response.ok) {
-    throw new Error('Erreur lors de la récupération des devices')
+// Fonction utilitaire pour éviter les requêtes en double
+async function withDedupe<T>(key: string, fetchFn: () => Promise<T>): Promise<T> {
+  // Si une requête avec cette clé est déjà en cours, on retourne sa promesse
+  if (pendingRequests.has(key)) {
+    return pendingRequests.get(key)!;
   }
+  
+  // Sinon, on lance la requête et on la stocke
+  const promise = fetchFn()
+    .finally(() => {
+      // Une fois terminée (succès ou échec), on la retire de la map
+      pendingRequests.delete(key);
+    });
+  
+  pendingRequests.set(key, promise);
+  return promise;
+}
 
-  return response.json()
+export const getDevices = async (): Promise<Device[]> => {
+  const token = getToken();
+  const cacheKey = 'devices';
+  
+  return withCache<Device[]>(cacheKey, () => 
+    withDedupe<Device[]>(cacheKey, async () => {
+      const response = await fetch('/api/devices', {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la récupération des devices');
+      }
+
+      return response.json();
+    })
+  );
 }
 
 export const getDeviceSensors = async (deviceId: number, period: TimePeriod, timeOffset: number = 0): Promise<SensorWithData[]> => {
-  const token = getToken()
+  const token = getToken();
   
   // Calculer les dates de début et de fin
-  const { startDate, endDate } = calculateDateRange(period, timeOffset)
+  const { startDate, endDate } = calculateDateRange(period, timeOffset);
   
   // Construire l'URL avec les paramètres
-  const url = `/api/sensors?startDate=${encodeURIComponent(startDate.toISOString())}&endDate=${encodeURIComponent(endDate.toISOString())}`
+  const url = `/api/sensors?startDate=${encodeURIComponent(startDate.toISOString())}&endDate=${encodeURIComponent(endDate.toISOString())}`;
   
-  const response = await fetch(url, {
-    headers: {
-      "Authorization": `Bearer ${token}`
-    }
-  })
+  // Clé de cache unique pour cette combinaison de paramètres
+  const cacheKey = `sensors:${deviceId}:${period}:${timeOffset}`;
+  
+  return withCache<SensorWithData[]>(cacheKey, () => 
+    withDedupe<SensorWithData[]>(cacheKey, async () => {
+      const response = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
 
-  if (!response.ok) {
-    throw new Error('Erreur lors de la récupération des capteurs')
-  }
+      if (!response.ok) {
+        throw new Error('Erreur lors de la récupération des capteurs');
+      }
 
-  const sensorsData = await response.json()
-  return sensorsData.filter((sensor: SensorWithData) => sensor.deviceId === deviceId)
+      const sensorsData = await response.json();
+      return sensorsData.filter((sensor: SensorWithData) => sensor.deviceId === deviceId);
+    })
+  );
 }
 
 export const getDevicesWithSensors = async (period: TimePeriod, timeOffset: number = 0): Promise<DeviceType[]> => {
-  const devices = await getDevices()
+  // Clé de cache pour cette requête spécifique
+  const cacheKey = `devicesWithSensors:${period}:${timeOffset}`;
   
-  return Promise.all(
-    devices.map(async (device) => {
-      const sensors = await getDeviceSensors(device.id, period, timeOffset)
+  return withCache<DeviceType[]>(cacheKey, () => 
+    withDedupe<DeviceType[]>(cacheKey, async () => {
+      const devices = await getDevices();
       
-      const sensorsWithAlertStatus = sensors.map((sensor) => {
-        const latestData = sensor.historicalData[0]
-        let isInAlert = false
+      const devicePromises = devices.map(async (device) => {
+        const sensors = await getDeviceSensors(device.id, period, timeOffset);
+        
+        const sensorsWithAlertStatus = sensors.map((sensor) => {
+          const latestData = sensor.historicalData[0];
+          let isInAlert = false;
 
-        if (latestData) {
-          if (sensor.isBinary) {
-            isInAlert = latestData.value === 1
-          } else if (sensor.threshold) {
-            isInAlert = latestData.value >= sensor.threshold.value
+          if (latestData) {
+            if (sensor.isBinary) {
+              isInAlert = latestData.value === 1;
+            } else if (sensor.threshold) {
+              isInAlert = latestData.value >= sensor.threshold.value;
+            }
           }
-        }
+
+          return {
+            ...sensor,
+            isInAlert
+          };
+        });
 
         return {
-          ...sensor,
-          isInAlert
-        }
-      })
+          ...device,
+          sensors: sensorsWithAlertStatus
+        };
+      });
 
-      return {
-        ...device,
-        sensors: sensorsWithAlertStatus
-      }
+      return Promise.all(devicePromises);
     })
-  )
+  );
 } 
