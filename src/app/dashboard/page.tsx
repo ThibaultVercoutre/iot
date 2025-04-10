@@ -120,7 +120,6 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log(timeOffset, selectedPeriod);
         const [userData, devicesWithSensors] = await Promise.all([
           getUser(),
           getDevicesWithSensors(selectedPeriod, timeOffset)
