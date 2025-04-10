@@ -53,10 +53,6 @@ export default function AlertsHistory() {
 
     if (!isLoading) {
       fetchAlerts()
-      
-      // Rafraîchir les données toutes les 10 secondes
-      const interval = setInterval(fetchAlerts, 10000)
-      return () => clearInterval(interval)
     }
   }, [isLoading])
 
