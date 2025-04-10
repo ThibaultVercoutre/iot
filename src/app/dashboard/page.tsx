@@ -17,7 +17,6 @@ export default function Dashboard() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [devices, setDevices] = useState<DeviceType[]>([])
-  const [sensorsInAlert, setSensorsInAlert] = useState<SensorWithData[]>([])
   const [user, setUser] = useState<User | null>(null)
   const [selectedPeriod, setSelectedPeriod] = useState<'1h' | '3h' | '6h' | '12h' | 'day' | 'week' | 'month'>('day')
   const [selectedType, setSelectedType] = useState<SensorType | 'all'>('all')
@@ -73,15 +72,6 @@ export default function Dashboard() {
         device.id === updatedDevice.id ? updatedDevice : device
       )
     )
-    
-    // Mettre à jour les capteurs en alerte
-    const allSensors = devices.flatMap(device => 
-      device.id === updatedDevice.id 
-        ? updatedDevice.sensors 
-        : device.sensors
-    )
-    const alertSensors = allSensors.filter(sensor => sensor.isInAlert)
-    setSensorsInAlert(alertSensors)
   }, [devices])
 
   // Réinitialiser le décalage temporel lors du changement de période
@@ -114,12 +104,6 @@ export default function Dashboard() {
         
         setUser(userData)
         setDevices(devicesWithSensors)
-        
-        // Filtrer les capteurs en alerte
-        const alertSensors = devicesWithSensors.flatMap(device => 
-          device.sensors.filter(sensor => sensor.isInAlert)
-        )
-        setSensorsInAlert(alertSensors)
       } catch (error) {
         console.error('Erreur lors de la récupération des données:', error)
       }
@@ -190,12 +174,6 @@ export default function Dashboard() {
           try {
             const devicesWithSensors = await getDevicesWithSensors(selectedPeriod, timeOffset)
             setDevices(devicesWithSensors)
-            
-            // Filtrer les capteurs en alerte
-            const alertSensors = devicesWithSensors.flatMap(device => 
-              device.sensors.filter(sensor => sensor.isInAlert)
-            )
-            setSensorsInAlert(alertSensors)
           } catch (error) {
             console.error('Erreur lors de la récupération des données:', error)
           }
