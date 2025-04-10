@@ -20,25 +20,6 @@ interface DeviceProps {
 }
 
 export function Device({ device, viewMode, selectedPeriod, user, onDeviceChange, timeOffset = 0 }: DeviceProps) {
-  // Fonction pour calculer la date de référence en fonction du décalage temporel
-  const getReferenceDate = (): string | undefined => {
-    if (timeOffset === 0) return undefined
-    
-    const referenceDate = new Date()
-    let hoursToSubtract = 0
-    
-    if (selectedPeriod === '1h') hoursToSubtract = timeOffset * 1
-    else if (selectedPeriod === '3h') hoursToSubtract = timeOffset * 3
-    else if (selectedPeriod === '6h') hoursToSubtract = timeOffset * 6
-    else if (selectedPeriod === '12h') hoursToSubtract = timeOffset * 12
-    else if (selectedPeriod === 'day') hoursToSubtract = timeOffset * 24
-    else if (selectedPeriod === 'week') hoursToSubtract = timeOffset * 24 * 7
-    else if (selectedPeriod === 'month') hoursToSubtract = timeOffset * 24 * 30
-    
-    referenceDate.setHours(referenceDate.getHours() - hoursToSubtract)
-    return referenceDate.toISOString()
-  }
-
   const handleThresholdChange = async (sensorId: number, value: string) => {
     try {
       const numValue = parseFloat(value)
@@ -50,7 +31,7 @@ export function Device({ device, viewMode, selectedPeriod, user, onDeviceChange,
       await updateSensorThreshold(sensorId, numValue)
       
       // Rafraîchir les données
-      const sensors = await getDeviceSensors(device.id, selectedPeriod, getReferenceDate())
+      const sensors = await getDeviceSensors(device.id, selectedPeriod, timeOffset)
       const updatedDevice = {
         ...device,
         sensors
@@ -67,7 +48,7 @@ export function Device({ device, viewMode, selectedPeriod, user, onDeviceChange,
       await deleteSensor(sensor.id)
 
       // Rafraîchir les données
-      const sensors = await getDeviceSensors(device.id, selectedPeriod, getReferenceDate())
+      const sensors = await getDeviceSensors(device.id, selectedPeriod, timeOffset)
       const updatedDevice = {
         ...device,
         sensors
@@ -82,7 +63,7 @@ export function Device({ device, viewMode, selectedPeriod, user, onDeviceChange,
   const handleSensorAdded = async () => {
     try {
       // Rafraîchir les données
-      const sensors = await getDeviceSensors(device.id, selectedPeriod, getReferenceDate())
+      const sensors = await getDeviceSensors(device.id, selectedPeriod, timeOffset)
       const updatedDevice = {
         ...device,
         sensors

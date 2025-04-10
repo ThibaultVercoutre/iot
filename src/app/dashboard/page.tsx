@@ -107,29 +107,9 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Calculer la date de référence en fonction du décalage
-        const referenceDate = new Date()
-        
-        if (timeOffset > 0) {
-          // Calculer le nombre d'heures à soustraire en fonction de la période et du décalage
-          let hoursToSubtract = 0
-          
-          if (selectedPeriod === '1h') hoursToSubtract = timeOffset * 1
-          else if (selectedPeriod === '3h') hoursToSubtract = timeOffset * 3
-          else if (selectedPeriod === '6h') hoursToSubtract = timeOffset * 6
-          else if (selectedPeriod === '12h') hoursToSubtract = timeOffset * 12
-          else if (selectedPeriod === 'day') hoursToSubtract = timeOffset * 24
-          else if (selectedPeriod === 'week') hoursToSubtract = timeOffset * 24 * 7
-          else if (selectedPeriod === 'month') hoursToSubtract = timeOffset * 24 * 30
-          
-          referenceDate.setHours(referenceDate.getHours() - hoursToSubtract)
-        }
-        
-        const referenceDateString = referenceDate.toISOString()
-
         const [userData, devicesWithSensors] = await Promise.all([
           getUser(),
-          getDevicesWithSensors(selectedPeriod, referenceDateString)
+          getDevicesWithSensors(selectedPeriod, timeOffset)
         ])
         
         setUser(userData)
@@ -210,26 +190,7 @@ export default function Dashboard() {
         
         <AddDeviceDialog onDeviceAdded={async () => {
           try {
-            // Calculer la date de référence
-            const referenceDate = new Date()
-            if (timeOffset > 0) {
-              // Utiliser la même logique que dans le useEffect
-              let hoursToSubtract = 0
-              
-              if (selectedPeriod === '1h') hoursToSubtract = timeOffset * 1
-              else if (selectedPeriod === '3h') hoursToSubtract = timeOffset * 3
-              else if (selectedPeriod === '6h') hoursToSubtract = timeOffset * 6
-              else if (selectedPeriod === '12h') hoursToSubtract = timeOffset * 12
-              else if (selectedPeriod === 'day') hoursToSubtract = timeOffset * 24
-              else if (selectedPeriod === 'week') hoursToSubtract = timeOffset * 24 * 7
-              else if (selectedPeriod === 'month') hoursToSubtract = timeOffset * 24 * 30
-              
-              referenceDate.setHours(referenceDate.getHours() - hoursToSubtract)
-            }
-            
-            const referenceDateString = referenceDate.toISOString()
-            
-            const devicesWithSensors = await getDevicesWithSensors(selectedPeriod, referenceDateString)
+            const devicesWithSensors = await getDevicesWithSensors(selectedPeriod, timeOffset)
             setDevices(devicesWithSensors)
             
             // Filtrer les capteurs en alerte

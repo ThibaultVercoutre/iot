@@ -26,35 +26,56 @@ const sensorSchema = z.object({
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const period = searchParams.get("period") || "day";
-
-    // Calculer la date de début selon la période
-    const startDate = new Date();
-    startDate.setHours(startDate.getHours() - startDate.getTimezoneOffset() / 60); // Ajuster pour UTC
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
     
-    switch (period) {
-      case "1h":
-        startDate.setHours(startDate.getHours() - 1);
-        break;
-      case "3h":
-        startDate.setHours(startDate.getHours() - 3);
-        break;
-      case "6h":
-        startDate.setHours(startDate.getHours() - 6);
-        break;
-      case "12h":
-        startDate.setHours(startDate.getHours() - 12);
-        break;
-      case "day":
-        startDate.setDate(startDate.getDate() - 1);
-        break;
-      case "week":
-        startDate.setDate(startDate.getDate() - 7);
-        break;
-      case "month":
-        startDate.setMonth(startDate.getMonth() - 1);
-        break;
+    // Valider les dates
+    let startDate: Date, endDate: Date;
+    
+    // Si les dates sont fournies, les utiliser
+    if (startDateParam && endDateParam) {
+      startDate = new Date(startDateParam);
+      endDate = new Date(endDateParam);
+      
+      // Vérifier que les dates sont valides
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return NextResponse.json(
+          { error: "Dates invalides" },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Compatibilité avec l'ancien système (calculer à partir de period)
+      const period = searchParams.get("period") || "day";
+      endDate = new Date();
+      startDate = new Date();
+      
+      switch (period) {
+        case "1h":
+          startDate.setHours(startDate.getHours() - 1);
+          break;
+        case "3h":
+          startDate.setHours(startDate.getHours() - 3);
+          break;
+        case "6h":
+          startDate.setHours(startDate.getHours() - 6);
+          break;
+        case "12h":
+          startDate.setHours(startDate.getHours() - 12);
+          break;
+        case "day":
+          startDate.setDate(startDate.getDate() - 1);
+          break;
+        case "week":
+          startDate.setDate(startDate.getDate() - 7);
+          break;
+        case "month":
+          startDate.setMonth(startDate.getMonth() - 1);
+          break;
+      }
     }
+    
+    console.log(`Récupération des données du ${startDate.toISOString()} au ${endDate.toISOString()}`);
 
     // Récupérer l'utilisateur à partir du token
     const token = request.headers.get("Authorization")?.split(" ")[1];
@@ -83,6 +104,7 @@ export async function GET(request: Request) {
           where: {
             timestamp: {
               gte: startDate,
+              lte: endDate
             },
           },
           orderBy: {

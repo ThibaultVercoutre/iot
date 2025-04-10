@@ -1,4 +1,5 @@
 import { SensorWithData } from '@/types/sensors'
+import { calculateDateRange } from './deviceService'
 
 const getToken = (): string => {
   const token = document.cookie
@@ -46,10 +47,16 @@ export const deleteSensor = async (sensorId: number): Promise<void> => {
   }
 }
 
-export const getDeviceSensors = async (deviceId: number, period: string, referenceDate?: string): Promise<SensorWithData[]> => {
+export const getDeviceSensors = async (deviceId: number, period: string, timeOffset: number = 0): Promise<SensorWithData[]> => {
   const token = getToken()
 
-  const response = await fetch(`/api/sensors?period=${period}&referenceDate=${referenceDate}`, {
+  // Calculer les dates de début et de fin
+  const { startDate, endDate } = calculateDateRange(period, timeOffset)
+  
+  // Construire l'URL avec les paramètres
+  const url = `/api/sensors?startDate=${encodeURIComponent(startDate.toISOString())}&endDate=${encodeURIComponent(endDate.toISOString())}`
+
+  const response = await fetch(url, {
     headers: {
       "Authorization": `Bearer ${token}`
     }
