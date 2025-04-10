@@ -158,7 +158,7 @@ export default function Dashboard() {
       })
       setDevices(updatedDevices)
     }
-  }, [activeAlerts, devices])
+  }, [activeAlerts])
 
   if (isLoading) {
     return (
