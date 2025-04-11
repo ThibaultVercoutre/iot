@@ -31,7 +31,6 @@ export default function Dashboard() {
   const [alertFilter, setAlertFilter] = useState<'all' | 'alert'>('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [timeOffset, setTimeOffset] = useState<number>(0)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   
   // Référence pour suivre si les données sont en cours de chargement
   const isFetchingRef = useRef(false);
@@ -132,13 +131,12 @@ export default function Dashboard() {
   }, [router])
 
   // Fonction optimisée pour récupérer les données des appareils et capteurs
-  const fetchData = useCallback(async (showRefreshState = false) => {
+  const fetchData = useCallback(async () => {
     // Éviter les appels simultanés
     if (isFetchingRef.current) return;
     
     try {
       isFetchingRef.current = true;
-      if (showRefreshState) setIsRefreshing(true);
       
       const [userData, devicesWithSensors] = await Promise.all([
         getUser(),
@@ -151,7 +149,6 @@ export default function Dashboard() {
       console.error('Erreur lors de la récupération des données:', error);
     } finally {
       isFetchingRef.current = false;
-      if (showRefreshState) setIsRefreshing(false);
     }
   }, [selectedPeriod, timeOffset]);
 
@@ -166,11 +163,6 @@ export default function Dashboard() {
     // Nettoyer l'intervalle lors du démontage du composant
     return () => clearInterval(interval);
   }, [fetchData]);
-
-  // Fonction pour déclencher une actualisation manuelle des données
-  const handleManualRefresh = () => {
-    fetchData(true); 
-  };
 
   // Mettre à jour l'état d'alerte des capteurs en fonction des alertes actives
   useEffect(() => {
@@ -208,23 +200,6 @@ export default function Dashboard() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">Tableau de bord des capteurs</h1>
-          <button 
-            onClick={handleManualRefresh} 
-            disabled={isRefreshing}
-            className="p-2 text-sm rounded-full bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
-            title="Actualiser les données"
-          >
-            {isRefreshing ? (
-              <span className="animate-spin inline-block h-5 w-5 border-t-2 border-b-2 border-blue-600 rounded-full" />
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                <path d="M21 3v5h-5" />
-                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                <path d="M8 16H3v5" />
-              </svg>
-            )}
-          </button>
         </div>
         
         <DashboardFilters
