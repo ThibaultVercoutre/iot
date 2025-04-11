@@ -60,14 +60,6 @@ import {
 }
 
 export default function SensorChart({ data, label, color, timeRange = 24, threshold, isBinary = false, timeOffset = 0 }: SensorChartProps) {
-  if (data.length === 0) {
-    return (
-      <div className="w-full h-[200px] flex items-center justify-center text-gray-500">
-        Aucune donnée disponible
-      </div>
-    );
-  }
-
   // Utiliser useMemo pour optimiser les calculs coûteux qui ne devraient pas être répétés à chaque rendu
   const {
     referenceTime,
@@ -76,8 +68,23 @@ export default function SensorChart({ data, label, color, timeRange = 24, thresh
     displayMin,
     yMinValue,
     yMaxValue,
-    yStepSize
+    yStepSize,
+    hasData
   } = useMemo(() => {
+    // Vérifier si on a des données
+    if (data.length === 0) {
+      return {
+        referenceTime: new Date(),
+        timestampMap: new Map<string, number>(),
+        sortedData: [],
+        displayMin: -timeRange,
+        yMinValue: 0,
+        yMaxValue: 1,
+        yStepSize: 1,
+        hasData: false
+      };
+    }
+    
     // Convertir les chaînes de timestamp en dates une seule fois
     const timestampMap = new Map<string, number>();
     
@@ -141,9 +148,19 @@ export default function SensorChart({ data, label, color, timeRange = 24, thresh
       displayMin,
       yMinValue,
       yMaxValue,
-      yStepSize
+      yStepSize,
+      hasData: true
     };
   }, [data, timeOffset, timeRange, isBinary]);
+  
+  // Afficher un message si pas de données
+  if (!hasData) {
+    return (
+      <div className="w-full h-[200px] flex items-center justify-center text-gray-500">
+        Aucune donnée disponible
+      </div>
+    );
+  }
   
   // Convertir les données pour le graphique
   const chartData = useMemo(() => ({
