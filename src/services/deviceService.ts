@@ -10,20 +10,23 @@ interface CacheEntry<T> {
 }
 
 // Durée de validité du cache (en ms)
-const CACHE_TTL = 500; // 5 secondes
+const CACHE_TTL = 500; // 500ms pour un rafraîchissement quasi-immédiat
+
+// Définir un type d'union pour tous les types de données que nous mettons en cache
+type CachedDataType = Device[] | DeviceType[] | SensorWithData[];
 
 // Map de cache pour les différentes requêtes
-const requestCache = new Map<string, CacheEntry<any>>();
+const requestCache = new Map<string, CacheEntry<CachedDataType>>();
 
 // Fonction utilitaire pour gérer le cache
-function withCache<T>(key: string, fetchFn: () => Promise<T>, ttl = CACHE_TTL): Promise<T> {
+function withCache<T extends CachedDataType>(key: string, fetchFn: () => Promise<T>, ttl = CACHE_TTL): Promise<T> {
   const now = Date.now();
   const cachedEntry = requestCache.get(key);
   
   // Si on a un résultat en cache qui n'est pas expiré, on le retourne
   if (cachedEntry && (now - cachedEntry.timestamp) < ttl) {
     console.log(`[Cache] Utilisation du cache pour: ${key}`);
-    return Promise.resolve(cachedEntry.data);
+    return Promise.resolve(cachedEntry.data as T);
   }
   
   // Sinon, on fait la requête et on met en cache
@@ -78,13 +81,13 @@ export const calculateDateRange = (period: TimePeriod, timeOffset: number = 0): 
 }
 
 // Map pour suivre les requêtes en cours (éviter les requêtes dupliquées)
-const pendingRequests = new Map<string, Promise<any>>();
+const pendingRequests = new Map<string, Promise<CachedDataType>>();
 
 // Fonction utilitaire pour éviter les requêtes en double
-async function withDedupe<T>(key: string, fetchFn: () => Promise<T>): Promise<T> {
+async function withDedupe<T extends CachedDataType>(key: string, fetchFn: () => Promise<T>): Promise<T> {
   // Si une requête avec cette clé est déjà en cours, on retourne sa promesse
   if (pendingRequests.has(key)) {
-    return pendingRequests.get(key)!;
+    return pendingRequests.get(key) as Promise<T>;
   }
   
   // Sinon, on lance la requête et on la stocke

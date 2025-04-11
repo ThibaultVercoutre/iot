@@ -16,8 +16,8 @@ import { Device as DeviceType, User } from "@/types/sensors"
 import { TimePeriod } from "@/lib/time-utils"
 
 // Constantes pour les intervalles d'actualisation
-const ALERTS_REFRESH_INTERVAL = 1000; // 10 secondes (peut rester moins fréquent)
-const DATA_REFRESH_INTERVAL = 1000;    // 1 seconde comme avant
+const ALERTS_REFRESH_INTERVAL = 1000; // 10 secondes
+const DATA_REFRESH_INTERVAL = 1000;   // 1 seconde pour un rafraîchissement quasi-immédiat
 
 
 export default function Dashboard() {
@@ -160,7 +160,7 @@ export default function Dashboard() {
     // Exécuter fetchData immédiatement lors du chargement ou d'un changement de filtre
     fetchData();
 
-    // Configurer l'intervalle avec une fréquence plus raisonnable
+    // Configurer l'intervalle pour rafraîchir les données chaque seconde
     const interval = setInterval(() => fetchData(), DATA_REFRESH_INTERVAL);
 
     // Nettoyer l'intervalle lors du démontage du composant
