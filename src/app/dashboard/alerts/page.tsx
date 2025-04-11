@@ -58,10 +58,10 @@ export default function AlertsHistory() {
 
   useEffect(() => {
     const fetchAlerts = async () => {
-      setIsLoadingOnlyActive(true)
       try {
-        const alerts = await getAlertLogs()
-        setAlertLogs(showOnlyActive ? alerts.filter(alert => alert.isActive) : alerts)
+        setIsLoadingOnlyActive(true)
+        const alerts = await getAlertLogs(showOnlyActive)
+        setAlertLogs(alerts)
         setIsLoadingOnlyActive(false)
       } catch (error) {
         console.error("Erreur lors de la récupération des alertes :", error)
@@ -72,7 +72,7 @@ export default function AlertsHistory() {
     if (!isLoadingOnlyActive) {
       fetchAlerts()
     }
-  }, [showOnlyActive])
+  }, [showOnlyActive, isLoadingOnlyActive])
 
   return (
     <div className="container mx-auto p-4">

@@ -1,218 +1,196 @@
 "use client"
 
-import { useEffect, useState, useCallback, useRef } from "react"
+import { useEffect, useState, useCallback, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { SensorType } from '@prisma/client'
-
+import { DashboardFilters, loadDashboardPreferences, saveDashboardPreferences, loadDashboardData, filterDevices, updateSensorsAlertStatus } from "@/services/dashboardService"
+import { useErrorHandler } from "@/lib/error-utils"
 import { AddDeviceDialog } from "@/components/AddDeviceDialog"
 import { AlertStatus } from "../../components/dashboard/AlertStatus"
 import { ActiveAlerts } from "../../components/dashboard/ActiveAlerts"
-import { DashboardFilters } from "../../components/dashboard/DashboardFilters"
+import { DashboardFilters as DashboardFiltersComponent } from "../../components/dashboard/DashboardFilters"
 import { Device } from "../../components/dashboard/Device"
-import { verifyAuth, getUser } from "@/services/authService"
+import { verifyAuth } from "@/services/authService"
 import { getDevicesWithSensors } from "@/services/deviceService"
-import { getAlertLogs, AlertLog } from "@/services/alertService"
 import { Device as DeviceType, User } from "@/types/sensors"
+import { AlertLog } from "@/services/alertService"
 import { TimePeriod } from "@/lib/time-utils"
+import { SensorType } from "@prisma/client"
 
-// Constantes pour les intervalles d'actualisation
-const ALERTS_REFRESH_INTERVAL = 1000; // 10 secondes
-const DATA_REFRESH_INTERVAL = 1000;   // 1 seconde pour un rafraîchissement quasi-immédiat
-
+// Constante pour l'intervalle d'actualisation
+const DATA_REFRESH_INTERVAL = 1000;    // 1 seconde pour rafraîchissement rapide
 
 export default function Dashboard() {
   const router = useRouter()
+  const handleError = useErrorHandler()
+  
+  // État
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [devices, setDevices] = useState<DeviceType[]>([])
   const [user, setUser] = useState<User | null>(null)
   const [activeAlerts, setActiveAlerts] = useState<AlertLog[]>([])
-  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('day')
-  const [selectedType, setSelectedType] = useState<SensorType | 'all'>('all')
-  const [alertFilter, setAlertFilter] = useState<'all' | 'alert'>('all')
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [timeOffset, setTimeOffset] = useState<number>(0)
   
-  // Référence pour suivre si les données sont en cours de chargement
-  const isFetchingRef = useRef(false);
+  // Filtres
+  const [filters, setFilters] = useState<DashboardFilters>(loadDashboardPreferences())
+  
+  // Référence pour éviter les requêtes simultanées
+  const isFetchingRef = useRef(false)
+  
+  // Filtrer les appareils selon les critères sélectionnés
+  const filteredDevices = useMemo(() => {
+    return filterDevices(devices, activeAlerts, filters);
+  }, [devices, activeAlerts, filters]);
 
-  // Restaurer les filtres depuis le localStorage
-  useEffect(() => {
-    const savedPeriod = localStorage.getItem('dashboardPeriod')
-    const savedType = localStorage.getItem('dashboardType')
-    const savedAlertFilter = localStorage.getItem('dashboardAlertFilter')
-    const savedViewMode = localStorage.getItem('dashboardViewMode')
-    const savedTimeOffset = localStorage.getItem('dashboardTimeOffset')
-
-    if (savedPeriod) setSelectedPeriod(savedPeriod as TimePeriod)
-    if (savedType) setSelectedType(savedType as SensorType | 'all')
-    if (savedAlertFilter) setAlertFilter(savedAlertFilter as 'all' | 'alert')
-    if (savedViewMode) setViewMode(savedViewMode as 'grid' | 'list')
-    if (savedTimeOffset) setTimeOffset(parseInt(savedTimeOffset, 10))
-  }, [])
-
-  // Sauvegarder les filtres dans le localStorage
-  useEffect(() => {
-    localStorage.setItem('dashboardPeriod', selectedPeriod)
-    localStorage.setItem('dashboardType', selectedType)
-    localStorage.setItem('dashboardAlertFilter', alertFilter)
-    localStorage.setItem('dashboardViewMode', viewMode)
-    localStorage.setItem('dashboardTimeOffset', timeOffset.toString())
-  }, [selectedPeriod, selectedType, alertFilter, viewMode, timeOffset])
-
-  // Fonction optimisée pour récupérer les alertes actives
-  const fetchAlerts = useCallback(async () => {
+  // Charger les données du tableau de bord
+  const fetchDashboardData = useCallback(async (showRefreshState = false) => {
+    if (isFetchingRef.current) return;
+    
     try {
-      const alerts = await getAlertLogs(true) // Récupérer uniquement les alertes actives
-      setActiveAlerts(alerts)
+      isFetchingRef.current = true;
+      if (showRefreshState) setIsRefreshing(true);
+      
+      const dashboardData = await loadDashboardData(filters);
+      setUser(dashboardData.user);
+      
+      // Mettre à jour les alertes et appliquer l'état d'alerte aux capteurs
+      setActiveAlerts(dashboardData.activeAlerts);
+      setDevices(updateSensorsAlertStatus(dashboardData.devices, dashboardData.activeAlerts));
     } catch (error) {
-      console.error("Erreur lors de la récupération des alertes :", error)
+      handleError(error);
+    } finally {
+      isFetchingRef.current = false;
+      if (showRefreshState) setIsRefreshing(false);
     }
-  }, []);
-
-  // Récupérer les alertes actives périodiquement
+  }, [filters, handleError]);
+  
+  // Vérifier l'authentification
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        await verifyAuth();
+        setIsLoading(false);
+      } catch (error) {
+        handleError(error);
+        router.push("/");
+      }
+    }
+    checkAuth();
+  }, [router, handleError]);
+  
+  // Charger les données initiales et configurer l'intervalle d'actualisation
   useEffect(() => {
     if (isLoading) return;
     
-    fetchAlerts();
+    // Charger les données immédiatement
+    fetchDashboardData();
     
-    // Rafraîchir les alertes à un intervalle raisonnable
-    const alertsInterval = setInterval(fetchAlerts, ALERTS_REFRESH_INTERVAL);
-    return () => clearInterval(alertsInterval);
-  }, [isLoading, fetchAlerts]);
-
-  // Filtrer les devices en fonction des filtres sélectionnés
-  const filteredDevices = devices.filter(device => {
-    // Filtrer par type de capteur
-    if (selectedType !== 'all') {
-      const hasMatchingSensor = device.sensors.some(sensor => sensor.type === selectedType)
-      if (!hasMatchingSensor) return false
-    }
+    // Configurer l'intervalle de rafraîchissement
+    const interval = setInterval(() => fetchDashboardData(), DATA_REFRESH_INTERVAL);
     
-    // Filtrer par état d'alerte
-    if (alertFilter === 'alert') {
-      // Utiliser les données d'alerte du service au lieu de historicalData
-      const hasAlertSensor = device.sensors.some(sensor => {
-        return activeAlerts.some(alert => alert.sensor.id === sensor.id && alert.isActive)
-      })
-      if (!hasAlertSensor) return false
-    }
-    
-    return true
-  })
-
-  // Fonction pour mettre à jour un device spécifique
+    return () => clearInterval(interval);
+  }, [isLoading, fetchDashboardData]);
+  
+  // Sauvegarder les préférences de filtre
+  useEffect(() => {
+    saveDashboardPreferences(filters);
+  }, [filters]);
+  
+  // Fonctions de gestion des filtres
+  const handlePeriodChange = useCallback((period: TimePeriod) => {
+    setFilters(prev => ({
+      ...prev,
+      period,
+      timeOffset: 0 // Réinitialiser le décalage temporel lors du changement de période
+    }));
+  }, []);
+  
+  const handleTypeChange = useCallback((type: SensorType | 'all') => {
+    setFilters(prev => ({ ...prev, type }));
+  }, []);
+  
+  const handleAlertFilterChange = useCallback((alertFilter: 'all' | 'alert') => {
+    setFilters(prev => ({ ...prev, alertFilter }));
+  }, []);
+  
+  const handleViewModeChange = useCallback((viewMode: 'grid' | 'list') => {
+    setFilters(prev => ({ ...prev, viewMode }));
+  }, []);
+  
+  const handleTimeOffsetChange = useCallback((timeOffset: number) => {
+    setFilters(prev => ({ ...prev, timeOffset }));
+  }, []);
+  
+  // Mettre à jour un device spécifique
   const handleDeviceChange = useCallback((updatedDevice: DeviceType) => {
     setDevices(prevDevices => 
       prevDevices.map(device => 
         device.id === updatedDevice.id ? updatedDevice : device
       )
-    )
-  }, [])
-
-  // Réinitialiser le décalage temporel lors du changement de période
-  const handlePeriodChange = (period: TimePeriod) => {
-    setSelectedPeriod(period)
-    setTimeOffset(0) // Réinitialiser le décalage temporel
-  }
-
-  // Vérification de l'authentification une seule fois au chargement
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        await verifyAuth()
-        setIsLoading(false)
-      } catch (error) {
-        console.error("Erreur lors de la vérification de l'authentification :", error)
-        router.push("/")
-      }
-    }
-
-    checkAuth()
-  }, [router])
-
-  // Fonction optimisée pour récupérer les données des appareils et capteurs
-  const fetchData = useCallback(async () => {
-    // Éviter les appels simultanés
-    if (isFetchingRef.current) return;
-    
+    );
+  }, []);
+  
+  // Actualisation manuelle des données
+  const handleManualRefresh = useCallback(() => {
+    fetchDashboardData(true);
+  }, [fetchDashboardData]);
+  
+  // Ajout d'un nouveau device
+  const handleDeviceAdded = useCallback(async () => {
     try {
-      isFetchingRef.current = true;
-      
-      const [userData, devicesWithSensors] = await Promise.all([
-        getUser(),
-        getDevicesWithSensors(selectedPeriod, timeOffset)
-      ]);
-      
-      setUser(userData);
+      const devicesWithSensors = await getDevicesWithSensors(filters.period, filters.timeOffset);
       setDevices(devicesWithSensors);
     } catch (error) {
-      console.error('Erreur lors de la récupération des données:', error);
-    } finally {
-      isFetchingRef.current = false;
+      handleError(error);
     }
-  }, [selectedPeriod, timeOffset]);
-
-  // Récupérer les données périodiquement
-  useEffect(() => {
-    // Exécuter fetchData immédiatement lors du chargement ou d'un changement de filtre
-    fetchData();
-
-    // Configurer l'intervalle pour rafraîchir les données chaque seconde
-    const interval = setInterval(() => fetchData(), DATA_REFRESH_INTERVAL);
-
-    // Nettoyer l'intervalle lors du démontage du composant
-    return () => clearInterval(interval);
-  }, [fetchData]);
-
-  // Mettre à jour l'état d'alerte des capteurs en fonction des alertes actives
-  useEffect(() => {
-    if (activeAlerts.length > 0 && devices.length > 0) {
-      const updatedDevices = devices.map(device => {
-        const updatedSensors = device.sensors.map(sensor => {
-          // Vérifier si le capteur a une alerte active
-          const isInAlert = activeAlerts.some(
-            alert => alert.sensor.id === sensor.id && alert.isActive
-          )
-          return { ...sensor, isInAlert }
-        })
-        return { ...device, sensors: updatedSensors }
-      })
-      setDevices(updatedDevices)
-    }
-  }, [activeAlerts])
-
+  }, [filters.period, filters.timeOffset, handleError]);
+  
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="container mx-auto p-4">
-      {user && (
-        <AlertStatus alertsEnabled={user.alertsEnabled} />
-      )}
+      {user && <AlertStatus alertsEnabled={user.alertsEnabled} />}
       
       <ActiveAlerts alerts={activeAlerts} />
       
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">Tableau de bord des capteurs</h1>
+          <button 
+            onClick={handleManualRefresh} 
+            disabled={isRefreshing}
+            className="p-2 text-sm rounded-full bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
+            title="Actualiser les données"
+          >
+            {isRefreshing ? (
+              <span className="animate-spin inline-block h-5 w-5 border-t-2 border-b-2 border-blue-600 rounded-full" />
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                <path d="M21 3v5h-5" />
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                <path d="M8 16H3v5" />
+              </svg>
+            )}
+          </button>
         </div>
         
-        <DashboardFilters
-          selectedPeriod={selectedPeriod}
-          selectedType={selectedType}
-          alertFilter={alertFilter}
-          viewMode={viewMode}
+        <DashboardFiltersComponent
+          selectedPeriod={filters.period}
+          selectedType={filters.type}
+          alertFilter={filters.alertFilter}
+          viewMode={filters.viewMode}
           onPeriodChange={handlePeriodChange}
-          onTypeChange={setSelectedType}
-          onAlertFilterChange={setAlertFilter}
-          onViewModeChange={setViewMode}
-          timeOffset={timeOffset}
-          onTimeOffsetChange={setTimeOffset}
+          onTypeChange={handleTypeChange}
+          onAlertFilterChange={handleAlertFilterChange}
+          onViewModeChange={handleViewModeChange}
+          timeOffset={filters.timeOffset}
+          onTimeOffsetChange={handleTimeOffsetChange}
         />
       </div>
       
@@ -221,23 +199,16 @@ export default function Dashboard() {
           <Device 
             key={device.id}
             device={device}
-            viewMode={viewMode}
-            selectedPeriod={selectedPeriod}
+            viewMode={filters.viewMode}
+            selectedPeriod={filters.period}
             user={user}
             onDeviceChange={handleDeviceChange}
-            timeOffset={timeOffset}
+            timeOffset={filters.timeOffset}
             activeAlerts={activeAlerts}
           />
         ))}
         
-        <AddDeviceDialog onDeviceAdded={async () => {
-          try {
-            const devicesWithSensors = await getDevicesWithSensors(selectedPeriod, timeOffset)
-            setDevices(devicesWithSensors)
-          } catch (error) {
-            console.error('Erreur lors de la récupération des données:', error)
-          }
-        }} />
+        <AddDeviceDialog onDeviceAdded={handleDeviceAdded} />
       </div>
     </div>
   )
