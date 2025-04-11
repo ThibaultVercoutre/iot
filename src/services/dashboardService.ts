@@ -37,6 +37,25 @@ export const DEFAULT_FILTERS: DashboardFilters = {
   timeOffset: 0
 };
 
+// Constante pour la clé de stockage local
+const STORAGE_KEY_PREFIX = 'iot_dashboard_';
+const MAX_STORAGE_SIZE = 50000; // Taille maximale en caractères (~50KB)
+
+/**
+ * Vérifie si localStorage est disponible
+ */
+function isLocalStorageAvailable(): boolean {
+  try {
+    const testKey = `${STORAGE_KEY_PREFIX}test`;
+    localStorage.setItem(testKey, 'test');
+    localStorage.removeItem(testKey);
+    return true;
+  } catch (e) {
+    console.warn('localStorage n\'est pas disponible:', e);
+    return false;
+  }
+}
+
 /**
  * Charge toutes les données nécessaires au tableau de bord
  */
@@ -118,11 +137,33 @@ export function updateSensorsAlertStatus(
 export function saveDashboardPreferences(filters: DashboardFilters): void {
   if (typeof window === 'undefined') return;
   
-  localStorage.setItem('dashboardPeriod', filters.period);
-  localStorage.setItem('dashboardType', filters.type);
-  localStorage.setItem('dashboardAlertFilter', filters.alertFilter);
-  localStorage.setItem('dashboardViewMode', filters.viewMode);
-  localStorage.setItem('dashboardTimeOffset', filters.timeOffset.toString());
+  try {
+    if (!isLocalStorageAvailable()) {
+      console.warn('localStorage n\'est pas disponible');
+      return;
+    }
+    
+    // Créer un objet pour stocker les préférences
+    const preferences = {
+      period: filters.period,
+      type: filters.type,
+      alertFilter: filters.alertFilter,
+      viewMode: filters.viewMode,
+      timeOffset: filters.timeOffset
+    };
+    
+    // Vérifier la taille des données avant stockage
+    const preferencesStr = JSON.stringify(preferences);
+    if (preferencesStr.length > MAX_STORAGE_SIZE) {
+      console.warn('Les préférences sont trop volumineuses pour être stockées');
+      return;
+    }
+    
+    // Stocker en une seule opération pour réduire les accès à localStorage
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}preferences`, preferencesStr);
+  } catch (error) {
+    console.warn('Erreur lors de la sauvegarde des préférences:', error);
+  }
 }
 
 /**
@@ -131,17 +172,45 @@ export function saveDashboardPreferences(filters: DashboardFilters): void {
 export function loadDashboardPreferences(): DashboardFilters {
   if (typeof window === 'undefined') return DEFAULT_FILTERS;
   
-  const savedPeriod = localStorage.getItem('dashboardPeriod');
-  const savedType = localStorage.getItem('dashboardType');
-  const savedAlertFilter = localStorage.getItem('dashboardAlertFilter');
-  const savedViewMode = localStorage.getItem('dashboardViewMode');
-  const savedTimeOffset = localStorage.getItem('dashboardTimeOffset');
+  try {
+    if (!isLocalStorageAvailable()) {
+      return DEFAULT_FILTERS;
+    }
+    
+    const preferencesStr = localStorage.getItem(`${STORAGE_KEY_PREFIX}preferences`);
+    if (!preferencesStr) return DEFAULT_FILTERS;
+    
+    // Parsing sécurisé avec validation des types
+    const preferences = JSON.parse(preferencesStr);
+    
+    return {
+      period: validTimePeriod(preferences.period) ? preferences.period : DEFAULT_FILTERS.period,
+      type: validSensorType(preferences.type) ? preferences.type : DEFAULT_FILTERS.type,
+      alertFilter: validAlertFilter(preferences.alertFilter) ? preferences.alertFilter : DEFAULT_FILTERS.alertFilter,
+      viewMode: validViewMode(preferences.viewMode) ? preferences.viewMode : DEFAULT_FILTERS.viewMode,
+      timeOffset: typeof preferences.timeOffset === 'number' ? preferences.timeOffset : DEFAULT_FILTERS.timeOffset
+    };
+  } catch (error) {
+    console.warn('Erreur lors du chargement des préférences:', error);
+    return DEFAULT_FILTERS;
+  }
+}
 
-  return {
-    period: (savedPeriod as TimePeriod) || DEFAULT_FILTERS.period,
-    type: (savedType as SensorType | 'all') || DEFAULT_FILTERS.type,
-    alertFilter: (savedAlertFilter as 'all' | 'alert') || DEFAULT_FILTERS.alertFilter,
-    viewMode: (savedViewMode as 'grid' | 'list') || DEFAULT_FILTERS.viewMode,
-    timeOffset: savedTimeOffset ? parseInt(savedTimeOffset, 10) : DEFAULT_FILTERS.timeOffset
-  };
-} 
+// Fonctions de validation pour vérifier les types
+function validTimePeriod(value: unknown): value is TimePeriod {
+  const validPeriods: TimePeriod[] = ['1h', '3h', '6h', '12h', 'day', 'week', 'month'];
+  return typeof value === 'string' && validPeriods.includes(value as TimePeriod);
+}
+
+function validSensorType(value: unknown): value is SensorType | 'all' {
+  const validTypes = [...Object.values(SensorType), 'all'];
+  return typeof value === 'string' && validTypes.includes(value as SensorType | 'all');
+}
+
+function validAlertFilter(value: unknown): value is 'all' | 'alert' {
+  return typeof value === 'string' && (value === 'all' || value === 'alert');
+}
+
+function validViewMode(value: unknown): value is 'grid' | 'list' {
+  return typeof value === 'string' && (value === 'grid' || value === 'list');
+}
