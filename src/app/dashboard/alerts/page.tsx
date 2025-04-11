@@ -69,10 +69,8 @@ export default function AlertsHistory() {
       }
     }
 
-    if (!isLoadingOnlyActive) {
-      fetchAlerts()
-    }
-  }, [showOnlyActive, isLoadingOnlyActive])
+    fetchAlerts()
+  }, [showOnlyActive])
 
   return (
     <div className="container mx-auto p-4">
