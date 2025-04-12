@@ -22,13 +22,32 @@ export default function DashboardLayout({
             </div>
             <div className="flex items-center justify-center sm:justify-end gap-2 py-4 sm:py-0">
               <Button variant="outline" asChild>
-                <Link href="/dashboard/documentation">Documentation</Link>
+                <Link href="/dashboard/documentation" className="flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                  </svg>
+                  <span className="hidden sm:inline">Documentation</span>
+                </Link>
               </Button>
               <Button variant="outline" asChild>
-                <Link href="/dashboard/account">Mon compte</Link>
+                <Link href="/dashboard/account" className="flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                  <span className="hidden sm:inline">Mon compte</span>
+                </Link>
               </Button>
               <Button variant="outline" asChild>
-                <Link href="/">Déconnexion</Link>
+                <Link href="/" className="flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                  </svg>
+                  <span className="hidden sm:inline">Déconnexion</span>
+                </Link>
               </Button>
             </div>
           </div>
