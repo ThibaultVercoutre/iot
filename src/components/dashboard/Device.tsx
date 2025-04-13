@@ -11,9 +11,11 @@ import {
 import { updateSensorThreshold, deleteSensor, getDeviceSensors } from "@/services/sensorService"
 import { AlertLog } from "@/services/alertService"
 import { TimePeriod } from "@/lib/time-utils"
+import { SensorType } from "@prisma/client"
 
 interface DeviceProps {
   device: DeviceType
+  type: SensorType | 'all'
   viewMode: 'grid' | 'list'
   selectedPeriod: TimePeriod
   user: User | null
@@ -22,7 +24,7 @@ interface DeviceProps {
   activeAlerts: AlertLog[]
 }
 
-export function Device({ device, viewMode, selectedPeriod, user, onDeviceChange, timeOffset = 0, activeAlerts }: DeviceProps) {
+export function Device({ device, type, viewMode, selectedPeriod, user, onDeviceChange, timeOffset = 0, activeAlerts }: DeviceProps) {
   const handleThresholdChange = async (sensorId: number, value: string) => {
     try {
       const numValue = parseFloat(value)
@@ -85,19 +87,21 @@ export function Device({ device, viewMode, selectedPeriod, user, onDeviceChange,
       </CardHeader>
       <CardContent>
         <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
-          {device.sensors.map((sensor: SensorWithData) => (
-            <Sensor
-              key={sensor.id}
-              sensor={sensor}
-              viewMode={viewMode}
-              selectedPeriod={selectedPeriod}
-              user={user}
-              onThresholdChange={handleThresholdChange}
-              onDeleteSensor={handleDeleteSensor}
-              timeOffset={timeOffset}
-              activeAlerts={activeAlerts}
-            />
-          ))}
+          {device.sensors
+            .filter(sensor => type === 'all' || sensor.type === type)
+            .map((sensor: SensorWithData) => (
+              <Sensor
+                key={sensor.id}
+                sensor={sensor}
+                viewMode={viewMode}
+                selectedPeriod={selectedPeriod}
+                user={user}
+                onThresholdChange={handleThresholdChange}
+                onDeleteSensor={handleDeleteSensor}
+                timeOffset={timeOffset}
+                activeAlerts={activeAlerts}
+              />
+            ))}
           <AddSensorDialog 
             deviceId={device.id}
             onSensorAdded={handleSensorAdded}

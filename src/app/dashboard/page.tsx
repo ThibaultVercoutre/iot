@@ -284,6 +284,7 @@ export default function Dashboard() {
           <Device 
             key={device.id}
             device={device}
+            type={filters.type}
             viewMode={filters.viewMode}
             selectedPeriod={filters.period}
             user={user}
