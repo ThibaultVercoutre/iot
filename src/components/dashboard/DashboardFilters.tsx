@@ -41,6 +41,11 @@ export function DashboardFilters({
   const [startDate, setStartDate] = useState<Date>(new Date())
   const [endDate, setEndDate] = useState<Date>(new Date())
   
+  // Journaliser la période sélectionnée lors du rendu initial et des changements
+  useEffect(() => {
+    console.log('DashboardFilters - selectedPeriod:', selectedPeriod);
+  }, [selectedPeriod]);
+  
   // Calculer les dates de début et de fin en fonction de la période et du décalage
   useEffect(() => {
     const end = new Date()

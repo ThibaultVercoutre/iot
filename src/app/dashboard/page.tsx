@@ -46,7 +46,9 @@ export default function Dashboard() {
   useEffect(() => {
     async function loadPreferences() {
       try {
+        console.log('Chargement des préférences utilisateur...');
         const userPreferences = await loadDashboardPreferences();
+        console.log('Préférences récupérées:', JSON.stringify(userPreferences));
         setFilters(userPreferences);
       } catch (error) {
         handleError(error, 'Chargement des préférences');
@@ -138,11 +140,16 @@ export default function Dashboard() {
   
   // Fonctions de gestion des filtres
   const handlePeriodChange = useCallback((period: TimePeriod) => {
-    setFilters(prev => ({
-      ...prev,
-      period,
-      timeOffset: 0 // Réinitialiser le décalage temporel lors du changement de période
-    }));
+    console.log(`Changement de période à ${period}`);
+    setFilters(prev => {
+      const newFilters = {
+        ...prev,
+        period,
+        timeOffset: 0 // Réinitialiser le décalage temporel lors du changement de période
+      };
+      console.log('Nouveaux filtres:', JSON.stringify(newFilters));
+      return newFilters;
+    });
   }, []);
   
   const handleTypeChange = useCallback((type: SensorType | 'all') => {

@@ -108,6 +108,9 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const validatedData = preferencesSchema.parse(body);
     
+    // Journaliser les préférences reçues pour le débogage
+    console.log('Préférences à enregistrer:', JSON.stringify(validatedData));
+    
     // Mettre à jour l'utilisateur (sans timeOffset)
     await prisma.user.update({
       where: { id: user.userId },
@@ -119,7 +122,15 @@ export async function PUT(request: NextRequest) {
       }
     });
     
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ 
+      success: true,
+      savedPreferences: {
+        period: validatedData.period,
+        viewMode: validatedData.viewMode,
+        type: validatedData.type,
+        alertFilter: validatedData.alertFilter
+      }
+    });
   } catch (error) {
     // Gérer les erreurs de validation Zod
     if (error instanceof z.ZodError) {

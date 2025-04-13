@@ -263,12 +263,19 @@ export async function loadDashboardPreferences(): Promise<DashboardFilters> {
     }
     
     const apiPreferences = await response.json();
+    console.log('Préférences chargées depuis API:', JSON.stringify(apiPreferences));
     
-    // Combiner avec le timeOffset local
-    return {
-      ...apiPreferences,
+    // S'assurer que tous les champs sont définis, sinon utiliser les valeurs par défaut
+    const preferences: DashboardFilters = {
+      period: validTimePeriod(apiPreferences.period) ? apiPreferences.period : DEFAULT_FILTERS.period,
+      type: validSensorType(apiPreferences.type) ? apiPreferences.type : DEFAULT_FILTERS.type,
+      alertFilter: validAlertFilter(apiPreferences.alertFilter) ? apiPreferences.alertFilter : DEFAULT_FILTERS.alertFilter,
+      viewMode: validViewMode(apiPreferences.viewMode) ? apiPreferences.viewMode : DEFAULT_FILTERS.viewMode,
       timeOffset
     };
+    
+    console.log('Préférences finales après validation:', JSON.stringify(preferences));
+    return preferences;
   } catch (error) {
     console.warn('Erreur lors du chargement des préférences depuis l\'API:', error);
     
