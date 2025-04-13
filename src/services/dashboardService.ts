@@ -41,6 +41,10 @@ export const DEFAULT_FILTERS: DashboardFilters = {
 const STORAGE_KEY_PREFIX = 'iot_dashboard_';
 const MAX_STORAGE_SIZE = 50000; // Taille maximale en caractères (~50KB)
 
+// Constante pour éviter les requêtes trop fréquentes
+const MIN_REQUEST_INTERVAL = 500; // 500ms minimum entre les requêtes
+let lastRequestTime = 0;
+
 /**
  * Vérifie si localStorage est disponible
  */
@@ -61,6 +65,14 @@ function isLocalStorageAvailable(): boolean {
  */
 export async function loadDashboardData(filters: DashboardFilters): Promise<DashboardData> {
   try {
+    // Protection contre les requêtes trop fréquentes
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTime;
+    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+      await new Promise(resolve => setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest));
+    }
+    lastRequestTime = Date.now();
+    
     // Charger les données en parallèle
     const [userData, devicesWithSensors, activeAlerts] = await Promise.all([
       getUser(),
@@ -142,7 +154,11 @@ export async function saveDashboardPreferences(filters: DashboardFilters): Promi
     saveTimeOffsetLocally(filters.timeOffset);
     
     // Essayer de sauvegarder les autres préférences via l'API
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = document.cookie
+      .split("; ")
+      .find(row => row.startsWith("auth-token="))
+      ?.split("=")[1];
+    
     if (!token) {
       throw new Error('Token non disponible');
     }
@@ -227,7 +243,11 @@ export async function loadDashboardPreferences(): Promise<DashboardFilters> {
     const timeOffset = loadTimeOffsetLocally();
     
     // Essayer de charger les autres préférences depuis l'API
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = document.cookie
+      .split("; ")
+      .find(row => row.startsWith("auth-token="))
+      ?.split("=")[1];
+      
     if (!token) {
       throw new Error('Token non disponible');
     }

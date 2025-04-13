@@ -83,13 +83,29 @@ export default function Dashboard() {
   // Vérifier l'authentification
   useEffect(() => {
     async function checkAuth() {
-      try {
-        await verifyAuth();
-        setIsLoading(false);
-      } catch (error) {
-        handleError(error);
-        router.push("/");
-      }
+      const maxRetries = 3;
+      let retryCount = 0;
+      let retryDelay = 1000; // 1 seconde de délai initial
+      
+      const attemptVerify = async () => {
+        try {
+          await verifyAuth();
+          setIsLoading(false);
+        } catch (error) {
+          if (retryCount < maxRetries) {
+            retryCount++;
+            console.warn(`Tentative de reconnexion ${retryCount}/${maxRetries} après ${retryDelay}ms`);
+            setTimeout(attemptVerify, retryDelay);
+            // Backoff exponentiel pour les tentatives suivantes
+            retryDelay = retryDelay * 2;
+          } else {
+            handleError(error);
+            router.push("/");
+          }
+        }
+      };
+      
+      attemptVerify();
     }
     checkAuth();
   }, [router, handleError]);
