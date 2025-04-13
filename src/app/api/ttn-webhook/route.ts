@@ -47,12 +47,7 @@ interface TTNPayload {
 export async function POST(request: Request) {
   try {
     const data: TTNPayload = await request.json();
-    const headers = request.headers;
-    const authHeader = request.headers.get('Authorization');
-
-    console.log(data);
-    console.log(headers);
-    console.log(authHeader);
+    // const authHeader = request.headers.get('Authorization');
 
     const applicationId = data.end_device_ids.application_ids.application_id;
     const joinEui = data.end_device_ids.join_eui;
