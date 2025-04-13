@@ -115,7 +115,13 @@ export function DashboardFilters({
     <div className="flex flex-wrap gap-4 w-full sm:w-auto">
       <div className="flex items-center gap-2">
         <Clock className="w-4 h-4" />
-        <Select value={selectedPeriod} onValueChange={onPeriodChange}>
+        <Select 
+          value={selectedPeriod} 
+          onValueChange={(value) => {
+            console.log(`Sélection de période: ${value}`);
+            onPeriodChange(value as TimePeriod);
+          }}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Sélectionner une période" />
           </SelectTrigger>

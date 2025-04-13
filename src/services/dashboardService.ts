@@ -150,8 +150,19 @@ export function updateSensorsAlertStatus(
  */
 export async function saveDashboardPreferences(filters: DashboardFilters): Promise<void> {
   try {
+    // Vérifier que les filtres sont valides
+    if (!validTimePeriod(filters.period)) {
+      console.error('Période invalide dans les filtres:', filters.period);
+      return;
+    }
+    
+    console.log('saveDashboardPreferences - Filtres à sauvegarder:', JSON.stringify(filters));
+    
     // Sauvegarder timeOffset localement
     saveTimeOffsetLocally(filters.timeOffset);
+    
+    // Sauvegarder localement d'abord (en cas d'échec de l'API)
+    saveAllPreferencesLocally(filters);
     
     // Essayer de sauvegarder les autres préférences via l'API
     const token = document.cookie
@@ -169,7 +180,12 @@ export async function saveDashboardPreferences(filters: DashboardFilters): Promi
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify(filters)
+      body: JSON.stringify({
+        period: filters.period,
+        type: filters.type,
+        alertFilter: filters.alertFilter,
+        viewMode: filters.viewMode
+      })
     });
     
     if (!response.ok) {
@@ -177,9 +193,7 @@ export async function saveDashboardPreferences(filters: DashboardFilters): Promi
     }
   } catch (error) {
     console.warn('Erreur lors de la sauvegarde des préférences:', error);
-    
-    // Fallback complet sur localStorage
-    saveAllPreferencesLocally(filters);
+    // Fallback déjà effectué au début
   }
 }
 
@@ -235,14 +249,21 @@ function saveAllPreferencesLocally(filters: DashboardFilters): void {
 
 /**
  * Récupère les préférences du tableau de bord
- * Combine les données de l'API et localStorage
+ * Priorise les données locales et complète avec l'API si besoin
  */
 export async function loadDashboardPreferences(): Promise<DashboardFilters> {
   try {
-    // Charger le timeOffset depuis localStorage
-    const timeOffset = loadTimeOffsetLocally();
+    // D'abord, essayer de charger depuis localStorage
+    const localPreferences = getLocalPreferences();
+    console.log('Préférences locales:', JSON.stringify(localPreferences));
     
-    // Essayer de charger les autres préférences depuis l'API
+    // Si on a des préférences locales complètes, les utiliser directement
+    if (localPreferences && localPreferences.period) {
+      console.log('Utilisation des préférences locales');
+      return localPreferences;
+    }
+    
+    // Sinon, essayer de charger depuis l'API
     const token = document.cookie
       .split("; ")
       .find(row => row.startsWith("auth-token="))
@@ -265,7 +286,10 @@ export async function loadDashboardPreferences(): Promise<DashboardFilters> {
     const apiPreferences = await response.json();
     console.log('Préférences chargées depuis API:', JSON.stringify(apiPreferences));
     
-    // S'assurer que tous les champs sont définis, sinon utiliser les valeurs par défaut
+    // Combiner avec les préférences locales (timeOffset)
+    const timeOffset = loadTimeOffsetLocally();
+    
+    // S'assurer que tous les champs sont définis
     const preferences: DashboardFilters = {
       period: validTimePeriod(apiPreferences.period) ? apiPreferences.period : DEFAULT_FILTERS.period,
       type: validSensorType(apiPreferences.type) ? apiPreferences.type : DEFAULT_FILTERS.type,
@@ -274,13 +298,54 @@ export async function loadDashboardPreferences(): Promise<DashboardFilters> {
       timeOffset
     };
     
-    console.log('Préférences finales après validation:', JSON.stringify(preferences));
+    console.log('Préférences finales combinées:', JSON.stringify(preferences));
+    
+    // Sauvegarder les préférences combinées localement pour la prochaine fois
+    saveAllPreferencesLocally(preferences);
+    
     return preferences;
   } catch (error) {
     console.warn('Erreur lors du chargement des préférences depuis l\'API:', error);
     
     // Fallback complet sur localStorage
     return loadAllPreferencesLocally();
+  }
+}
+
+/**
+ * Récupère les préférences stockées localement
+ */
+function getLocalPreferences(): DashboardFilters | null {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    if (!isLocalStorageAvailable()) {
+      return null;
+    }
+    
+    const preferencesStr = localStorage.getItem(`${STORAGE_KEY_PREFIX}preferences`);
+    if (!preferencesStr) return null;
+    
+    // Parsing sécurisé
+    const preferences = JSON.parse(preferencesStr);
+    console.log('Préférences brutes du localStorage:', JSON.stringify(preferences));
+    
+    // Vérifier que c'est bien un objet valide
+    if (!preferences || typeof preferences !== 'object') {
+      return null;
+    }
+    
+    // Valider les champs
+    return {
+      period: validTimePeriod(preferences.period) ? preferences.period : DEFAULT_FILTERS.period,
+      type: validSensorType(preferences.type) ? preferences.type : DEFAULT_FILTERS.type,
+      alertFilter: validAlertFilter(preferences.alertFilter) ? preferences.alertFilter : DEFAULT_FILTERS.alertFilter,
+      viewMode: validViewMode(preferences.viewMode) ? preferences.viewMode : DEFAULT_FILTERS.viewMode,
+      timeOffset: typeof preferences.timeOffset === 'number' ? preferences.timeOffset : DEFAULT_FILTERS.timeOffset
+    };
+  } catch (error) {
+    console.warn('Erreur lors de la récupération des préférences locales:', error);
+    return null;
   }
 }
 

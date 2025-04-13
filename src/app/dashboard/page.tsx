@@ -46,9 +46,12 @@ export default function Dashboard() {
   useEffect(() => {
     async function loadPreferences() {
       try {
-        console.log('Chargement des préférences utilisateur...');
+        // Éviter de recharger si déjà chargé
+        if (preferencesLoaded) return;
+        
+        console.log('Chargement initial des préférences utilisateur...');
         const userPreferences = await loadDashboardPreferences();
-        console.log('Préférences récupérées:', JSON.stringify(userPreferences));
+        console.log('Préférences récupérées (initial):', JSON.stringify(userPreferences));
         setFilters(userPreferences);
       } catch (error) {
         handleError(error, 'Chargement des préférences');
@@ -58,7 +61,7 @@ export default function Dashboard() {
     }
     
     loadPreferences();
-  }, [handleError]);
+  }, [handleError, preferencesLoaded]);
 
   // Charger les données du tableau de bord
   const fetchDashboardData = useCallback(async (showRefreshState = false) => {
@@ -128,6 +131,11 @@ export default function Dashboard() {
   // Sauvegarder les préférences de filtre
   useEffect(() => {
     if (!preferencesLoaded) return; // Éviter de sauvegarder avant le chargement initial
+    
+    // Éviter de sauvegarder lors du chargement initial
+    if (!filters.period) return;
+    
+    console.log(`Sauvegarde des préférences après changement: ${JSON.stringify(filters)}`);
     
     const saveTimer = setTimeout(() => {
       saveDashboardPreferences(filters).catch(error => 
