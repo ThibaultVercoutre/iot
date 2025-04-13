@@ -33,6 +33,7 @@ async function getUserFromToken(request: NextRequest): Promise<{ userId: number 
     };
     return { userId: decoded.userId };
   } catch (error) {
+    console.error("Erreur lors de la vérification du token:", error);
     return null;
   }
 }

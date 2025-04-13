@@ -51,6 +51,7 @@ function isLocalStorageAvailable(): boolean {
     localStorage.removeItem(testKey);
     return true;
   } catch (e) {
+    console.warn('Erreur lors de la vérification de localStorage:', e);
     return false;
   }
 }
