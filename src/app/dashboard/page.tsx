@@ -17,7 +17,7 @@ import { TimePeriod } from "@/lib/time-utils"
 import { SensorType } from "@prisma/client"
 
 // Constante pour l'intervalle d'actualisation
-const DATA_REFRESH_INTERVAL = 1000;    // 1 seconde pour rafraîchissement rapide
+const DATA_REFRESH_INTERVAL = 10000;    // 10 secondes pour un rafraîchissement plus modéré
 
 export default function Dashboard() {
   const router = useRouter()
