@@ -118,7 +118,18 @@ export function DashboardFilters({
         <Select 
           value={selectedPeriod} 
           onValueChange={(value) => {
-            console.log(`Sélection de période: ${value}`);
+            // Conversion explicite vers TimePeriod pour éviter les problèmes de type
+            const validPeriods: TimePeriod[] = ['1h', '3h', '6h', '12h', 'day', 'week', 'month'];
+            
+            // Vérifier si la valeur est valide
+            if (!validPeriods.includes(value as TimePeriod)) {
+              console.error(`Valeur invalide dans le sélecteur: ${value}`);
+              return;
+            }
+            
+            console.log(`Select changement période: ${value} (était: ${selectedPeriod})`);
+            
+            // Appeler le gestionnaire d'événements
             onPeriodChange(value as TimePeriod);
           }}
         >

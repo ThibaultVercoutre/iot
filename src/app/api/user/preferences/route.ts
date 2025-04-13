@@ -104,42 +104,53 @@ export async function PUT(request: NextRequest) {
       );
     }
     
-    // Valider les données
+    // Lire les données brutes de la requête
     const body = await request.json();
-    const validatedData = preferencesSchema.parse(body);
+    console.log('Body reçu (brut):', JSON.stringify(body));
     
-    // Journaliser les préférences reçues pour le débogage
-    console.log('Préférences à enregistrer:', JSON.stringify(validatedData));
-    
-    // Mettre à jour l'utilisateur (sans timeOffset)
-    await prisma.user.update({
-      where: { id: user.userId },
-      data: {
-        dashboardPeriod: validatedData.period,
-        dashboardViewMode: validatedData.viewMode,
-        dashboardSensorType: validatedData.type,
-        dashboardAlertFilter: validatedData.alertFilter
+    try {
+      // Validation avec Zod
+      const validatedData = preferencesSchema.parse(body);
+      console.log('Données validées:', JSON.stringify(validatedData));
+      
+      // Mettre à jour l'utilisateur (sans timeOffset)
+      await prisma.user.update({
+        where: { id: user.userId },
+        data: {
+          dashboardPeriod: validatedData.period,
+          dashboardViewMode: validatedData.viewMode,
+          dashboardSensorType: validatedData.type,
+          dashboardAlertFilter: validatedData.alertFilter
+        }
+      });
+      
+      return NextResponse.json({ 
+        success: true,
+        savedPreferences: {
+          period: validatedData.period,
+          viewMode: validatedData.viewMode,
+          type: validatedData.type,
+          alertFilter: validatedData.alertFilter
+        }
+      });
+    } catch (validationError) {
+      // Gérer spécifiquement les erreurs de validation
+      if (validationError instanceof z.ZodError) {
+        console.error('Erreur de validation Zod:', JSON.stringify(validationError.errors));
+        return NextResponse.json(
+          { 
+            error: "Données non valides", 
+            details: validationError.errors, 
+            receivedData: body,
+            code: ErrorCode.VALIDATION 
+          },
+          { status: 400 }
+        );
       }
-    });
-    
-    return NextResponse.json({ 
-      success: true,
-      savedPreferences: {
-        period: validatedData.period,
-        viewMode: validatedData.viewMode,
-        type: validatedData.type,
-        alertFilter: validatedData.alertFilter
-      }
-    });
-  } catch (error) {
-    // Gérer les erreurs de validation Zod
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Données non valides", details: error.errors, code: ErrorCode.VALIDATION },
-        { status: 400 }
-      );
+      throw validationError; // Remonter les autres types d'erreurs
     }
-    
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour des préférences:', error);
     const errorResponse = handleApiError(error, "PUT /api/user/preferences");
     return NextResponse.json(errorResponse.body, { status: errorResponse.status });
   }

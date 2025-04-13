@@ -158,6 +158,12 @@ export async function saveDashboardPreferences(filters: DashboardFilters): Promi
     
     console.log('saveDashboardPreferences - Filtres à sauvegarder:', JSON.stringify(filters));
     
+    // Vérifier que tous les champs obligatoires sont présents
+    if (!filters.type || !filters.alertFilter || !filters.viewMode) {
+      console.error('Filtres incomplets:', JSON.stringify(filters));
+      return;
+    }
+    
     // Sauvegarder timeOffset localement
     saveTimeOffsetLocally(filters.timeOffset);
     
@@ -174,22 +180,37 @@ export async function saveDashboardPreferences(filters: DashboardFilters): Promi
       throw new Error('Token non disponible');
     }
     
+    // Données à envoyer à l'API (sans le timeOffset)
+    const apiData = {
+      period: filters.period,
+      type: filters.type,
+      alertFilter: filters.alertFilter,
+      viewMode: filters.viewMode,
+      timeOffset: filters.timeOffset, // Inclure timeOffset pour passer la validation
+    };
+    
+    console.log('Envoi à l\'API:', JSON.stringify(apiData));
+    
     const response = await fetch('/api/user/preferences', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({
-        period: filters.period,
-        type: filters.type,
-        alertFilter: filters.alertFilter,
-        viewMode: filters.viewMode
-      })
+      body: JSON.stringify(apiData)
     });
     
     if (!response.ok) {
-      throw new Error(`Erreur HTTP: ${response.status}`);
+      // Essayer de récupérer les détails de l'erreur
+      let errorDetails = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = JSON.stringify(errorData);
+      } catch (e) {
+        errorDetails = 'Impossible de lire les détails de l\'erreur';
+      }
+      
+      throw new Error(`Erreur HTTP: ${response.status} - ${errorDetails}`);
     }
   } catch (error) {
     console.warn('Erreur lors de la sauvegarde des préférences:', error);

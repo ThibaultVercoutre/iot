@@ -37,6 +37,9 @@ export default function Dashboard() {
   // Référence pour éviter les requêtes simultanées
   const isFetchingRef = useRef(false)
   
+  // Référence pour éviter les sauvegardes répétées des mêmes préférences
+  const lastSavedRef = useRef<string | null>(null)
+  
   // Filtrer les appareils selon les critères sélectionnés
   const filteredDevices = useMemo(() => {
     return filterDevices(devices, activeAlerts, filters);
@@ -130,32 +133,67 @@ export default function Dashboard() {
   
   // Sauvegarder les préférences de filtre
   useEffect(() => {
-    if (!preferencesLoaded) return; // Éviter de sauvegarder avant le chargement initial
+    // Ne pas essayer de sauvegarder si les préférences ne sont pas chargées
+    if (!preferencesLoaded) return;
     
-    // Éviter de sauvegarder lors du chargement initial
+    // Éviter les sauvegardes inutiles
     if (!filters.period) return;
     
-    console.log(`Sauvegarde des préférences après changement: ${JSON.stringify(filters)}`);
+    // Éviter la sauvegarde en continu - utiliser une référence pour savoir si on a déjà envoyé ces préférences
+    const filterKey = JSON.stringify(filters);
+    if (lastSavedRef.current === filterKey) {
+      return; // Éviter de sauvegarder les mêmes préférences en boucle
+    }
+    
+    console.log(`Planification sauvegarde préférences: ${filterKey}`);
     
     const saveTimer = setTimeout(() => {
-      saveDashboardPreferences(filters).catch(error => 
-        handleError(error, 'Sauvegarde des préférences')
-      );
-    }, 500); // Debounce pour éviter trop de sauvegardes
+      // Mettre à jour la référence des dernières préférences sauvegardées
+      lastSavedRef.current = filterKey;
+      
+      saveDashboardPreferences(filters).catch(error => {
+        // En cas d'erreur, ne pas continuer à essayer indéfiniment
+        console.error('Erreur sauvegarde préférences, désactivation temporaire:', error);
+        // On pourrait implémenter une logique de réessai ici si nécessaire
+      });
+    }, 1000); // Délai plus long pour réduire les requêtes
     
     return () => clearTimeout(saveTimer);
   }, [filters, preferencesLoaded, handleError]);
   
   // Fonctions de gestion des filtres
   const handlePeriodChange = useCallback((period: TimePeriod) => {
-    console.log(`Changement de période à ${period}`);
+    console.log(`Changement de période demandé: ${period}`);
+    
+    // Validation supplémentaire pour s'assurer que la période est valide
+    const validPeriods: TimePeriod[] = ['1h', '3h', '6h', '12h', 'day', 'week', 'month'];
+    if (!validPeriods.includes(period)) {
+      console.error(`Période invalide reçue: ${period}`);
+      return;
+    }
+    
+    // Force une mise à jour immédiate avec sauvegarde
     setFilters(prev => {
       const newFilters = {
         ...prev,
         period,
-        timeOffset: 0 // Réinitialiser le décalage temporel lors du changement de période
+        timeOffset: 0, // Réinitialiser le décalage temporel lors du changement de période
+        // Assurer que tous les champs obligatoires sont présents
+        type: prev.type || 'all',
+        alertFilter: prev.alertFilter || 'all',
+        viewMode: prev.viewMode || 'grid'
       };
-      console.log('Nouveaux filtres:', JSON.stringify(newFilters));
+      
+      console.log('Nouveaux filtres appliqués:', JSON.stringify(newFilters));
+      
+      // Sauvegarde locale immédiate
+      try {
+        localStorage.setItem('iot_dashboard_preferences', JSON.stringify(newFilters));
+        console.log('Sauvegardé localement avec succès');
+      } catch (e) {
+        console.error('Erreur sauvegarde locale:', e);
+      }
+      
       return newFilters;
     });
   }, []);
