@@ -37,9 +37,6 @@ export default function Dashboard() {
   // Référence pour éviter les requêtes simultanées
   const isFetchingRef = useRef(false)
   
-  // Référence pour éviter les sauvegardes répétées des mêmes préférences
-  const lastSavedRef = useRef<string | null>(null)
-  
   // Filtrer les appareils selon les critères sélectionnés
   const filteredDevices = useMemo(() => {
     return filterDevices(devices, activeAlerts, filters);
