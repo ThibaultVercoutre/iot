@@ -49,9 +49,7 @@ export default function Dashboard() {
         // Éviter de recharger si déjà chargé
         if (preferencesLoaded) return;
         
-        console.log('Chargement initial des préférences utilisateur...');
         const userPreferences = await loadDashboardPreferences();
-        console.log('Préférences récupérées (initial):', JSON.stringify(userPreferences));
         setFilters(userPreferences);
       } catch (error) {
         handleError(error, 'Chargement des préférences');
@@ -130,7 +128,6 @@ export default function Dashboard() {
   
   // Fonctions de gestion des filtres
   const handlePeriodChange = useCallback((period: TimePeriod) => {
-    console.log(`Changement de période demandé: ${period}`);
     
     // Validation supplémentaire pour s'assurer que la période est valide
     const validPeriods: TimePeriod[] = ['1h', '3h', '6h', '12h', 'day', 'week', 'month'];
@@ -151,12 +148,10 @@ export default function Dashboard() {
         viewMode: prev.viewMode || 'grid'
       };
       
-      console.log('Nouveaux filtres appliqués:', JSON.stringify(newFilters));
       
       // Sauvegarde locale immédiate
       try {
         localStorage.setItem('iot_dashboard_preferences', JSON.stringify(newFilters));
-        console.log('Sauvegardé localement avec succès');
       } catch (e) {
         console.error('Erreur sauvegarde locale:', e);
       }

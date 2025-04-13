@@ -156,8 +156,6 @@ export async function saveDashboardPreferences(filters: DashboardFilters): Promi
       return;
     }
     
-    console.log('saveDashboardPreferences - Filtres à sauvegarder:', JSON.stringify(filters));
-    
     // Vérifier que tous les champs obligatoires sont présents
     if (!filters.type || !filters.alertFilter || !filters.viewMode) {
       console.error('Filtres incomplets:', JSON.stringify(filters));
@@ -188,8 +186,6 @@ export async function saveDashboardPreferences(filters: DashboardFilters): Promi
       viewMode: filters.viewMode,
       timeOffset: filters.timeOffset, // Inclure timeOffset pour passer la validation
     };
-    
-    console.log('Envoi à l\'API:', JSON.stringify(apiData));
     
     const response = await fetch('/api/user/preferences', {
       method: 'PUT',
@@ -277,11 +273,9 @@ export async function loadDashboardPreferences(): Promise<DashboardFilters> {
   try {
     // D'abord, essayer de charger depuis localStorage
     const localPreferences = getLocalPreferences();
-    console.log('Préférences locales:', JSON.stringify(localPreferences));
     
     // Si on a des préférences locales complètes, les utiliser directement
     if (localPreferences && localPreferences.period) {
-      console.log('Utilisation des préférences locales');
       return localPreferences;
     }
     
@@ -306,7 +300,6 @@ export async function loadDashboardPreferences(): Promise<DashboardFilters> {
     }
     
     const apiPreferences = await response.json();
-    console.log('Préférences chargées depuis API:', JSON.stringify(apiPreferences));
     
     // Combiner avec les préférences locales (timeOffset)
     const timeOffset = loadTimeOffsetLocally();
@@ -319,8 +312,6 @@ export async function loadDashboardPreferences(): Promise<DashboardFilters> {
       viewMode: validViewMode(apiPreferences.viewMode) ? apiPreferences.viewMode : DEFAULT_FILTERS.viewMode,
       timeOffset
     };
-    
-    console.log('Préférences finales combinées:', JSON.stringify(preferences));
     
     // Sauvegarder les préférences combinées localement pour la prochaine fois
     saveAllPreferencesLocally(preferences);
@@ -350,7 +341,6 @@ function getLocalPreferences(): DashboardFilters | null {
     
     // Parsing sécurisé
     const preferences = JSON.parse(preferencesStr);
-    console.log('Préférences brutes du localStorage:', JSON.stringify(preferences));
     
     // Vérifier que c'est bien un objet valide
     if (!preferences || typeof preferences !== 'object') {
