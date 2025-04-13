@@ -207,6 +207,7 @@ export async function saveDashboardPreferences(filters: DashboardFilters): Promi
         const errorData = await response.json();
         errorDetails = JSON.stringify(errorData);
       } catch (e) {
+        console.error('Erreur lors de la récupération des détails de l\'erreur:', e);
         errorDetails = 'Impossible de lire les détails de l\'erreur';
       }
       
