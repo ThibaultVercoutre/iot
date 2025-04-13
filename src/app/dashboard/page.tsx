@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { DashboardFilters, loadDashboardPreferences, saveDashboardPreferences, loadDashboardData, filterDevices, updateSensorsAlertStatus } from "@/services/dashboardService"
+import { DashboardFilters, loadDashboardPreferences, saveDashboardPreferences, loadDashboardData, filterDevices, updateSensorsAlertStatus, DEFAULT_FILTERS } from "@/services/dashboardService"
 import { useErrorHandler } from "@/lib/error-utils"
 import { AddDeviceDialog } from "@/components/AddDeviceDialog"
 import { AlertStatus } from "../../components/dashboard/AlertStatus"
@@ -30,8 +30,9 @@ export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null)
   const [activeAlerts, setActiveAlerts] = useState<AlertLog[]>([])
   
-  // Filtres
-  const [filters, setFilters] = useState<DashboardFilters>(loadDashboardPreferences())
+  // Filtres avec valeurs par défaut
+  const [filters, setFilters] = useState<DashboardFilters>(DEFAULT_FILTERS)
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false)
   
   // Référence pour éviter les requêtes simultanées
   const isFetchingRef = useRef(false)
@@ -40,6 +41,22 @@ export default function Dashboard() {
   const filteredDevices = useMemo(() => {
     return filterDevices(devices, activeAlerts, filters);
   }, [devices, activeAlerts, filters]);
+
+  // Charger les préférences utilisateur depuis la BD
+  useEffect(() => {
+    async function loadPreferences() {
+      try {
+        const userPreferences = await loadDashboardPreferences();
+        setFilters(userPreferences);
+      } catch (error) {
+        handleError(error, 'Chargement des préférences');
+      } finally {
+        setPreferencesLoaded(true);
+      }
+    }
+    
+    loadPreferences();
+  }, [handleError]);
 
   // Charger les données du tableau de bord
   const fetchDashboardData = useCallback(async (showRefreshState = false) => {
@@ -79,7 +96,7 @@ export default function Dashboard() {
   
   // Charger les données initiales et configurer l'intervalle d'actualisation
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !preferencesLoaded) return;
     
     // Charger les données immédiatement
     fetchDashboardData();
@@ -88,12 +105,20 @@ export default function Dashboard() {
     const interval = setInterval(() => fetchDashboardData(), DATA_REFRESH_INTERVAL);
     
     return () => clearInterval(interval);
-  }, [isLoading, fetchDashboardData]);
+  }, [isLoading, preferencesLoaded, fetchDashboardData]);
   
   // Sauvegarder les préférences de filtre
   useEffect(() => {
-    saveDashboardPreferences(filters);
-  }, [filters]);
+    if (!preferencesLoaded) return; // Éviter de sauvegarder avant le chargement initial
+    
+    const saveTimer = setTimeout(() => {
+      saveDashboardPreferences(filters).catch(error => 
+        handleError(error, 'Sauvegarde des préférences')
+      );
+    }, 500); // Debounce pour éviter trop de sauvegardes
+    
+    return () => clearTimeout(saveTimer);
+  }, [filters, preferencesLoaded, handleError]);
   
   // Fonctions de gestion des filtres
   const handlePeriodChange = useCallback((period: TimePeriod) => {
@@ -144,7 +169,7 @@ export default function Dashboard() {
     }
   }, [filters.period, filters.timeOffset, handleError]);
   
-  if (isLoading) {
+  if (isLoading || !preferencesLoaded) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>

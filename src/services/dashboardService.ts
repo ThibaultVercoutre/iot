@@ -51,7 +51,6 @@ function isLocalStorageAvailable(): boolean {
     localStorage.removeItem(testKey);
     return true;
   } catch (e) {
-    console.warn('localStorage n\'est pas disponible:', e);
     return false;
   }
 }
@@ -132,14 +131,66 @@ export function updateSensorsAlertStatus(
 }
 
 /**
- * Sauvegarde les préférences du tableau de bord dans localStorage
+ * Sauvegarde les préférences du tableau de bord
+ * Utilise l'API pour period, type, alertFilter et viewMode
+ * Utilise localStorage uniquement pour timeOffset
  */
-export function saveDashboardPreferences(filters: DashboardFilters): void {
+export async function saveDashboardPreferences(filters: DashboardFilters): Promise<void> {
+  try {
+    // Sauvegarder timeOffset localement
+    saveTimeOffsetLocally(filters.timeOffset);
+    
+    // Essayer de sauvegarder les autres préférences via l'API
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      throw new Error('Token non disponible');
+    }
+    
+    const response = await fetch('/api/user/preferences', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(filters)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Erreur HTTP: ${response.status}`);
+    }
+  } catch (error) {
+    console.warn('Erreur lors de la sauvegarde des préférences:', error);
+    
+    // Fallback complet sur localStorage
+    saveAllPreferencesLocally(filters);
+  }
+}
+
+/**
+ * Sauvegarde uniquement le timeOffset dans localStorage
+ */
+function saveTimeOffsetLocally(timeOffset: number): void {
   if (typeof window === 'undefined') return;
   
   try {
     if (!isLocalStorageAvailable()) {
-      console.warn('localStorage n\'est pas disponible');
+      return;
+    }
+    
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}timeOffset`, timeOffset.toString());
+  } catch (error) {
+    console.warn('Erreur lors de la sauvegarde du timeOffset:', error);
+  }
+}
+
+/**
+ * Sauvegarde toutes les préférences localement (fallback)
+ */
+function saveAllPreferencesLocally(filters: DashboardFilters): void {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    if (!isLocalStorageAvailable()) {
       return;
     }
     
@@ -155,21 +206,82 @@ export function saveDashboardPreferences(filters: DashboardFilters): void {
     // Vérifier la taille des données avant stockage
     const preferencesStr = JSON.stringify(preferences);
     if (preferencesStr.length > MAX_STORAGE_SIZE) {
-      console.warn('Les préférences sont trop volumineuses pour être stockées');
       return;
     }
     
-    // Stocker en une seule opération pour réduire les accès à localStorage
+    // Stocker en une seule opération
     localStorage.setItem(`${STORAGE_KEY_PREFIX}preferences`, preferencesStr);
   } catch (error) {
-    console.warn('Erreur lors de la sauvegarde des préférences:', error);
+    console.warn('Erreur lors de la sauvegarde des préférences localement:', error);
   }
 }
 
 /**
- * Récupère les préférences du tableau de bord depuis localStorage
+ * Récupère les préférences du tableau de bord
+ * Combine les données de l'API et localStorage
  */
-export function loadDashboardPreferences(): DashboardFilters {
+export async function loadDashboardPreferences(): Promise<DashboardFilters> {
+  try {
+    // Charger le timeOffset depuis localStorage
+    const timeOffset = loadTimeOffsetLocally();
+    
+    // Essayer de charger les autres préférences depuis l'API
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      throw new Error('Token non disponible');
+    }
+    
+    const response = await fetch('/api/user/preferences', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Erreur HTTP: ${response.status}`);
+    }
+    
+    const apiPreferences = await response.json();
+    
+    // Combiner avec le timeOffset local
+    return {
+      ...apiPreferences,
+      timeOffset
+    };
+  } catch (error) {
+    console.warn('Erreur lors du chargement des préférences depuis l\'API:', error);
+    
+    // Fallback complet sur localStorage
+    return loadAllPreferencesLocally();
+  }
+}
+
+/**
+ * Charge uniquement le timeOffset depuis localStorage
+ */
+function loadTimeOffsetLocally(): number {
+  if (typeof window === 'undefined') return DEFAULT_FILTERS.timeOffset;
+  
+  try {
+    if (!isLocalStorageAvailable()) {
+      return DEFAULT_FILTERS.timeOffset;
+    }
+    
+    const timeOffsetStr = localStorage.getItem(`${STORAGE_KEY_PREFIX}timeOffset`);
+    if (!timeOffsetStr) return DEFAULT_FILTERS.timeOffset;
+    
+    const timeOffset = parseInt(timeOffsetStr, 10);
+    return isNaN(timeOffset) ? DEFAULT_FILTERS.timeOffset : timeOffset;
+  } catch (error) {
+    console.warn('Erreur lors du chargement du timeOffset:', error);
+    return DEFAULT_FILTERS.timeOffset;
+  }
+}
+
+/**
+ * Charge toutes les préférences depuis localStorage (fallback)
+ */
+function loadAllPreferencesLocally(): DashboardFilters {
   if (typeof window === 'undefined') return DEFAULT_FILTERS;
   
   try {

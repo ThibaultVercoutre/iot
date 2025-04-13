@@ -163,7 +163,7 @@ export async function POST(request: Request) {
 
       // Pour les capteurs binaires
       if (sensor.isBinary) {
-        if (value === 1 && !activeAlert && alertsEnabled) {
+        if (value === 1 && !activeAlert) {
           // Créer une nouvelle alerte
           await prisma.alertLog.create({
             data: {
@@ -199,7 +199,7 @@ export async function POST(request: Request) {
         const thresholdValue = sensor.threshold.value;
         
         // Cas où le seuil est dépassé et pas d'alerte active
-        if (value >= thresholdValue && !activeAlert && alertsEnabled) {
+        if (value >= thresholdValue && !activeAlert) {
           // Créer une nouvelle alerte
           await prisma.alertLog.create({
             data: {
