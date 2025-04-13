@@ -131,36 +131,6 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [isLoading, preferencesLoaded, fetchDashboardData]);
   
-  // Sauvegarder les préférences de filtre
-  useEffect(() => {
-    // Ne pas essayer de sauvegarder si les préférences ne sont pas chargées
-    if (!preferencesLoaded) return;
-    
-    // Éviter les sauvegardes inutiles
-    if (!filters.period) return;
-    
-    // Éviter la sauvegarde en continu - utiliser une référence pour savoir si on a déjà envoyé ces préférences
-    const filterKey = JSON.stringify(filters);
-    if (lastSavedRef.current === filterKey) {
-      return; // Éviter de sauvegarder les mêmes préférences en boucle
-    }
-    
-    console.log(`Planification sauvegarde préférences: ${filterKey}`);
-    
-    const saveTimer = setTimeout(() => {
-      // Mettre à jour la référence des dernières préférences sauvegardées
-      lastSavedRef.current = filterKey;
-      
-      saveDashboardPreferences(filters).catch(error => {
-        // En cas d'erreur, ne pas continuer à essayer indéfiniment
-        console.error('Erreur sauvegarde préférences, désactivation temporaire:', error);
-        // On pourrait implémenter une logique de réessai ici si nécessaire
-      });
-    }, 1000); // Délai plus long pour réduire les requêtes
-    
-    return () => clearTimeout(saveTimer);
-  }, [filters, preferencesLoaded, handleError]);
-  
   // Fonctions de gestion des filtres
   const handlePeriodChange = useCallback((period: TimePeriod) => {
     console.log(`Changement de période demandé: ${period}`);
@@ -194,24 +164,53 @@ export default function Dashboard() {
         console.error('Erreur sauvegarde locale:', e);
       }
       
+      // Sauvegarde en base de données directement
+      saveDashboardPreferences(newFilters).catch(error => {
+        console.error('Erreur sauvegarde préférences, désactivation temporaire:', error);
+      });
+      
       return newFilters;
     });
   }, []);
   
   const handleTypeChange = useCallback((type: SensorType | 'all') => {
-    setFilters(prev => ({ ...prev, type }));
+    setFilters(prev => {
+      const newFilters = { ...prev, type };
+      saveDashboardPreferences(newFilters).catch(error => {
+        console.error('Erreur sauvegarde type, désactivation temporaire:', error);
+      });
+      return newFilters;
+    });
   }, []);
   
   const handleAlertFilterChange = useCallback((alertFilter: 'all' | 'alert') => {
-    setFilters(prev => ({ ...prev, alertFilter }));
+    setFilters(prev => {
+      const newFilters = { ...prev, alertFilter };
+      saveDashboardPreferences(newFilters).catch(error => {
+        console.error('Erreur sauvegarde alertFilter, désactivation temporaire:', error);
+      });
+      return newFilters;
+    });
   }, []);
   
   const handleViewModeChange = useCallback((viewMode: 'grid' | 'list') => {
-    setFilters(prev => ({ ...prev, viewMode }));
+    setFilters(prev => {
+      const newFilters = { ...prev, viewMode };
+      saveDashboardPreferences(newFilters).catch(error => {
+        console.error('Erreur sauvegarde viewMode, désactivation temporaire:', error);
+      });
+      return newFilters;
+    });
   }, []);
   
   const handleTimeOffsetChange = useCallback((timeOffset: number) => {
-    setFilters(prev => ({ ...prev, timeOffset }));
+    setFilters(prev => {
+      const newFilters = { ...prev, timeOffset };
+      saveDashboardPreferences(newFilters).catch(error => {
+        console.error('Erreur sauvegarde timeOffset, désactivation temporaire:', error);
+      });
+      return newFilters;
+    });
   }, []);
   
   // Mettre à jour un device spécifique
