@@ -233,7 +233,7 @@ export async function POST(request: Request) {
     }
 
     // Si des alertes ont été déclenchées, envoyer un email groupé
-    if (newAlerts.length > 0) {
+    if (newAlerts.length > 0 && alertsEnabled) {
       console.log(`Envoi d'un email pour ${newAlerts.length} capteurs en alerte`);
       // Envoi direct de toutes les alertes en un seul email
       await sendMultipleAlertsEmail(user.email, newAlerts);
