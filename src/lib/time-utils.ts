@@ -19,21 +19,21 @@ export const getPeriodInHours = (period: TimePeriod): number => {
 /**
  * Obtient le libellé d'une période (singulier)
  */
-export const getPeriodLabel = (period: TimePeriod): string => {
+export const getPeriodLabel = (period: TimePeriod, offset: number = 0): { label: string, finalOffset: number } => {
   switch(period) {
     case '1h':
     case '3h':
     case '6h':
     case '12h':
-      return 'heure';
+      return { label: 'heure', finalOffset: offset };
     case 'day':
-      return 'jour';
+      return { label: 'jour', finalOffset: offset / 24 };
     case 'week':
-      return 'semaine';
+      return { label: 'semaine', finalOffset: offset / 24 / 7 };
     case 'month':
-      return 'mois';
+      return { label: 'mois', finalOffset: offset / 24 / 30 };
     default:
-      return 'période';
+      return { label: 'période', finalOffset: offset };
   }
 };
 
@@ -71,9 +71,9 @@ export const formatTimeOffset = (period: TimePeriod, offset: number): string => 
   if (offset === 0) return '';
   
   const absOffset = Math.abs(offset);
-  const periodLabel = getPeriodLabel(period);
+  const { label, finalOffset } = getPeriodLabel(period, absOffset);
   const needsPlural = absOffset > 1 && !['month'].includes(period);
-  const label = needsPlural ? `${periodLabel}s` : periodLabel;
+  const finalLabel = needsPlural ? `${label}s` : label;
   
-  return `(Décalage: ${offset > 0 ? '-' : '+'} ${absOffset} ${label})`;
+  return `(Décalage: ${offset > 0 ? '-' : '+'} ${finalOffset} ${label})`;
 }; 
