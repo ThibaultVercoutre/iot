@@ -75,5 +75,5 @@ export const formatTimeOffset = (period: TimePeriod, offset: number): string => 
   const needsPlural = absOffset > 1 && !['month'].includes(period);
   const finalLabel = needsPlural ? `${label}s` : label;
   
-  return `(Décalage: ${offset > 0 ? '-' : '+'} ${finalOffset} ${label})`;
+  return `(Décalage: ${offset > 0 ? '-' : '+'} ${finalOffset} ${finalLabel})`;
 }; 
