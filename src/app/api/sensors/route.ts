@@ -103,8 +103,6 @@ export async function GET(request: Request) {
           orderBy: {
             timestamp: "desc",
           },
-          // Limiter les données historiques
-          take: 1440 * 2,
         },
         threshold: true,
         alertLogs: {
