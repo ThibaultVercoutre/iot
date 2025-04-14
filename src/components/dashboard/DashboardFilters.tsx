@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
 import { TimePeriod, formatTimeOffset } from "@/lib/time-utils"
+import { getPeriodHours } from "@/lib/date-utils"
 
 interface DashboardFiltersProps {
   selectedPeriod: TimePeriod
@@ -94,11 +95,11 @@ export function DashboardFilters({
     if (!onTimeOffsetChange) return
     
     if (direction === 'prev') {
-      onTimeOffsetChange(timeOffset + 1)
+      onTimeOffsetChange(timeOffset + getPeriodHours(selectedPeriod))
     } else {
       // Ne pas aller au-delà du temps présent
       if (timeOffset > 0) {
-        onTimeOffsetChange(timeOffset - 1)
+        onTimeOffsetChange(timeOffset - getPeriodHours(selectedPeriod))
       }
     }
   }
