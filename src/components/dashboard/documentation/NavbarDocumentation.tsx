@@ -3,7 +3,7 @@ import { Home, AlertCircle, Settings, PieChart, Tablet } from "lucide-react"
 
 export default function NavbarDocumentation() {
   return (
-    <TabsList className="grid grid-cols-2 md:grid-cols-5 gap-2">
+    <TabsList className="grid grid-cols-5 gap-2">
       <TabsTrigger value="dashboard" className="flex items-center gap-2 cursor-pointer">
         <Home className="h-4 w-4" />
         <span className="hidden md:inline">Tableau de bord</span>
