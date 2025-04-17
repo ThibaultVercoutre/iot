@@ -48,7 +48,8 @@ export async function POST(request: Request) {
   try {
     const data: TTNPayload = await request.json();
     console.log(data);
-    // const authHeader = request.headers.get('Authorization');
+    const authHeader = request.headers.get('Authorization');
+    console.log(authHeader);
 
     const applicationId = data.end_device_ids.application_ids.application_id;
     const joinEui = data.end_device_ids.join_eui;
