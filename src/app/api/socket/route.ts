@@ -11,13 +11,27 @@ type ConnectedClient = {
   userId: string;
 };
 
+// Type pour les informations d'alerte de capteur
+type SensorAlertInfo = {
+  sensorName: string;
+  value: number;
+  thresholdValue: number | null;
+  timestamp: Date;
+};
+
 // Type pour les messages envoyés par les websockets
 type SocketMessage = {
-  type: 'SENSORS_UPDATED' | 'NEW_ALERTS' | 'ALERTS_STATUS_CHANGED' | 'CONNECTION_ESTABLISHED';
-  message?: string;
-  device?: Record<string, unknown>;
-  alerts?: Array<Record<string, unknown>>;
-  alertsEnabled?: boolean;
+  type: 'CONNECTION_ESTABLISHED';
+  message: string;
+} | {
+  type: 'ALERTS_STATUS_CHANGED';
+  alertsEnabled: boolean;
+} | {
+  type: 'SENSORS_UPDATED';
+  device: Record<string, unknown>;
+} | {
+  type: 'NEW_ALERTS';
+  alerts: SensorAlertInfo[];
 };
 
 const connectedClients = new Map<string, Set<ConnectedClient>>();
@@ -85,7 +99,7 @@ export async function GET(request: NextRequest) {
         
         // Envoyer un message de connexion réussie
         const message = {
-          type: 'CONNECTION_ESTABLISHED',
+          type: 'CONNECTION_ESTABLISHED' as const,
           message: 'Connexion en temps réel établie'
         };
         
