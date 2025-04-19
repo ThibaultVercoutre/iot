@@ -16,8 +16,8 @@ import { AlertLog } from "@/services/alertService"
 import { TimePeriod } from "@/lib/time-utils"
 import { SensorType } from "@prisma/client"
 
-// Constante pour l'intervalle d'actualisation
-const DATA_REFRESH_INTERVAL = 10000;    // 10 secondes pour un rafraîchissement plus modéré
+// Pas besoin de constante pour le polling, nous utilisons maintenant les SSE
+// const DATA_REFRESH_INTERVAL = 10000;
 
 export default function Dashboard() {
   const router = useRouter()
@@ -29,6 +29,9 @@ export default function Dashboard() {
   const [devices, setDevices] = useState<DeviceType[]>([])
   const [user, setUser] = useState<User | null>(null)
   const [activeAlerts, setActiveAlerts] = useState<AlertLog[]>([])
+  
+  // Référence pour la connexion SSE
+  const eventSourceRef = useRef<EventSource | null>(null)
   
   // Filtres avec valeurs par défaut
   const [filters, setFilters] = useState<DashboardFilters>(DEFAULT_FILTERS)
@@ -113,18 +116,108 @@ export default function Dashboard() {
     checkAuth();
   }, [router, handleError]);
   
-  // Charger les données initiales et configurer l'intervalle d'actualisation
+  // Configuration de la connexion SSE
   useEffect(() => {
     if (isLoading || !preferencesLoaded) return;
-    
-    // Charger les données immédiatement
+
+    // Charger les données initiales
     fetchDashboardData();
+
+    // Récupérer le token d'authentification depuis les cookies
+    const token = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('auth-token='))
+      ?.split('=')[1];
+
+    // Créer la connexion SSE avec le token
+    const sseUrl = `/api/socket${token ? `?token=${token}` : ''}`;
+    const eventSource = new EventSource(sseUrl);
+    eventSourceRef.current = eventSource;
+
+    // Gérer les événements de la connexion SSE
+    eventSource.onopen = () => {
+      console.log('Connexion SSE établie');
+    };
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        switch (data.type) {
+          case 'CONNECTION_ESTABLISHED':
+            console.log(data.message);
+            break;
+            
+          case 'SENSORS_UPDATED':
+            // Mettre à jour le device spécifique
+            setDevices(prevDevices => 
+              prevDevices.map(device => 
+                device.id === data.device.id 
+                  ? updateSensorsAlertStatus([data.device], activeAlerts)[0] 
+                  : device
+              )
+            );
+            break;
+          
+          case 'NEW_ALERTS':
+            // Actualiser la liste complète des alertes actives
+            fetchDashboardData();
+            break;
+            
+          case 'ALERTS_STATUS_CHANGED':
+            // Mettre à jour l'état des alertes de l'utilisateur
+            if (user) {
+              setUser(prev => prev ? { ...prev, alertsEnabled: data.alertsEnabled } : prev);
+            }
+            break;
+            
+          default:
+            console.log('Message SSE non reconnu:', data);
+        }
+      } catch (error) {
+        console.error('Erreur lors du traitement du message SSE:', error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('Erreur SSE:', error);
+      
+      // Fermer la connexion en cas d'erreur
+      eventSource.close();
+      eventSourceRef.current = null;
+      
+      // Essayer de reconnecter après un délai
+      setTimeout(() => {
+        if (document.visibilityState !== 'hidden') {
+          console.log('Tentative de reconnexion SSE...');
+          fetchDashboardData();
+        }
+      }, 3000);
+    };
+
+    // Nettoyage à la déconnexion
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
+  }, [isLoading, preferencesLoaded, fetchDashboardData, activeAlerts, user]);
+  
+  // Reconnexion SSE lors du retour sur l'onglet
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !eventSourceRef.current) {
+        fetchDashboardData();
+      }
+    };
     
-    // Configurer l'intervalle de rafraîchissement
-    const interval = setInterval(() => fetchDashboardData(), DATA_REFRESH_INTERVAL);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    return () => clearInterval(interval);
-  }, [isLoading, preferencesLoaded, fetchDashboardData]);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchDashboardData]);
   
   // Fonctions de gestion des filtres
   const handlePeriodChange = useCallback((period: TimePeriod) => {

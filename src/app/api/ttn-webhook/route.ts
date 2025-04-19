@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { sendMultipleAlertsEmail } from '@/lib/email';
+import { sendToUser } from '../socket/route';
 
 const prisma = new PrismaClient();
 
@@ -86,6 +87,14 @@ export async function POST(request: Request) {
         }
       });
 
+      // Informer les clients connectés du changement d'état des alertes
+      if (device?.userId) {
+        sendToUser(String(device.userId), {
+          type: 'ALERTS_STATUS_CHANGED',
+          alertsEnabled: maintenance === 0
+        });
+      }
+
       return NextResponse.json({ 
         message: `État des alertes mis à jour: ${maintenance === 0 ? 'activées' : 'désactivées'}`
       });
@@ -118,6 +127,7 @@ export async function POST(request: Request) {
     
     // Collecter toutes les alertes dans cette requête
     const newAlerts = [];
+    let sensorsUpdated = false;
     const timestamp = data.uplink_message?.received_at 
       ? parseTTNDate(data.uplink_message.received_at)
       : new Date();
@@ -130,6 +140,8 @@ export async function POST(request: Request) {
         console.warn(`Aucun capteur trouvé pour l'ID unique: ${sensorUniqueId}`);
         continue;
       }
+
+      sensorsUpdated = true;
 
       // Créer l'entrée dans la base de données
       const sensorData = await prisma.sensorData.create({
@@ -239,6 +251,38 @@ export async function POST(request: Request) {
       console.log(`Envoi d'un email pour ${newAlerts.length} capteurs en alerte`);
       // Envoi direct de toutes les alertes en un seul email
       await sendMultipleAlertsEmail(user.email, newAlerts);
+      
+      // Informer les clients connectés des nouvelles alertes
+      sendToUser(String(user.id), {
+        type: 'NEW_ALERTS',
+        alerts: newAlerts
+      });
+    }
+    
+    // Si des capteurs ont été mis à jour, informer les clients
+    if (sensorsUpdated) {
+      // Récupérer les données à jour pour les envoyer au client
+      const updatedDevice = await prisma.device.findUnique({
+        where: { id: device.id },
+        include: {
+          sensors: {
+            include: {
+              historicalData: {
+                orderBy: { timestamp: 'desc' },
+                take: 1
+              },
+              threshold: true
+            }
+          }
+        }
+      });
+      
+      if (updatedDevice) {
+        sendToUser(String(user.id), {
+          type: 'SENSORS_UPDATED',
+          device: updatedDevice
+        });
+      }
     }
 
     return NextResponse.json({ 
