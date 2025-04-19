@@ -10,6 +10,16 @@ type ConnectedClient = {
   controller: ReadableStreamDefaultController;
   userId: string;
 };
+
+// Type pour les messages envoyés par les websockets
+type SocketMessage = {
+  type: 'SENSORS_UPDATED' | 'NEW_ALERTS' | 'ALERTS_STATUS_CHANGED' | 'CONNECTION_ESTABLISHED';
+  message?: string;
+  device?: Record<string, unknown>;
+  alerts?: Array<Record<string, unknown>>;
+  alertsEnabled?: boolean;
+};
+
 const connectedClients = new Map<string, Set<ConnectedClient>>();
 
 export async function GET(request: NextRequest) {
@@ -101,7 +111,7 @@ export async function GET(request: NextRequest) {
 }
 
 // Fonction pour envoyer des données à un utilisateur spécifique
-export function sendToUser(userId: string, data: any) {
+export function sendToUser(userId: string, data: SocketMessage) {
   const clients = connectedClients.get(userId);
   if (!clients || clients.size === 0) {
     return false;
