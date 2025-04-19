@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { sendMultipleAlertsEmail } from '@/lib/email';
-import { sendToUser } from '../socket/route';
+import { sendSocketMessage } from '@/lib/socket-utils';
 
 const prisma = new PrismaClient();
 
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
 
       // Informer les clients connectés du changement d'état des alertes
       if (device?.userId) {
-        sendToUser(String(device.userId), {
+        sendSocketMessage(String(device.userId), {
           type: 'ALERTS_STATUS_CHANGED',
           alertsEnabled: maintenance === 0
         });
@@ -253,7 +253,7 @@ export async function POST(request: Request) {
       await sendMultipleAlertsEmail(user.email, newAlerts);
       
       // Informer les clients connectés des nouvelles alertes
-      sendToUser(String(user.id), {
+      sendSocketMessage(String(user.id), {
         type: 'NEW_ALERTS',
         alerts: newAlerts
       });
@@ -278,7 +278,7 @@ export async function POST(request: Request) {
       });
       
       if (updatedDevice) {
-        sendToUser(String(user.id), {
+        sendSocketMessage(String(user.id), {
           type: 'SENSORS_UPDATED',
           device: updatedDevice
         });

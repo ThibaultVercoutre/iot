@@ -2,39 +2,9 @@ import { NextRequest } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
+import { registerClient, removeClient } from '../../../lib/socket-utils';
 
 const prisma = new PrismaClient();
-
-// Stockage pour les clients connectés
-type ConnectedClient = {
-  controller: ReadableStreamDefaultController;
-  userId: string;
-};
-
-// Type pour les informations d'alerte de capteur
-type SensorAlertInfo = {
-  sensorName: string;
-  value: number;
-  thresholdValue: number | null;
-  timestamp: Date;
-};
-
-// Type pour les messages envoyés par les websockets
-type SocketMessage = {
-  type: 'CONNECTION_ESTABLISHED';
-  message: string;
-} | {
-  type: 'ALERTS_STATUS_CHANGED';
-  alertsEnabled: boolean;
-} | {
-  type: 'SENSORS_UPDATED';
-  device: Record<string, unknown>;
-} | {
-  type: 'NEW_ALERTS';
-  alerts: SensorAlertInfo[];
-};
-
-const connectedClients = new Map<string, Set<ConnectedClient>>();
 
 export async function GET(request: NextRequest) {
   try {
@@ -89,13 +59,8 @@ export async function GET(request: NextRequest) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       start(controller) {
-        // Ajouter ce client à la liste des clients connectés
-        if (!connectedClients.has(userId)) {
-          connectedClients.set(userId, new Set());
-        }
-        
-        const clientInfo = { controller, userId };
-        connectedClients.get(userId)?.add(clientInfo);
+        // Enregistrer ce client pour l'utilisateur
+        registerClient(userId, controller);
         
         // Envoyer un message de connexion réussie
         const message = {
@@ -122,39 +87,4 @@ export async function GET(request: NextRequest) {
     console.error('Erreur lors de la configuration SSE:', error);
     return new Response('Erreur serveur', { status: 500 });
   }
-}
-
-// Fonction pour envoyer des données à un utilisateur spécifique
-export function sendToUser(userId: string, data: SocketMessage) {
-  const clients = connectedClients.get(userId);
-  if (!clients || clients.size === 0) {
-    return false;
-  }
-  
-  const encoder = new TextEncoder();
-  const payload = encoder.encode(`data: ${JSON.stringify(data)}\n\n`);
-  
-  let sent = false;
-  clients.forEach(client => {
-    try {
-      client.controller.enqueue(payload);
-      sent = true;
-    } catch (error) {
-      console.error(`Erreur d'envoi à l'utilisateur ${userId}:`, error);
-      // Supprimer ce client en cas d'erreur
-      clients.delete(client);
-    }
-  });
-  
-  // Si tous les clients ont été supprimés, retirer l'entrée de la map
-  if (clients.size === 0) {
-    connectedClients.delete(userId);
-  }
-  
-  return sent;
-}
-
-// Fonction pour supprimer un client de la liste des connexions
-function removeClient(userId: string) {
-  connectedClients.delete(userId);
 } 
