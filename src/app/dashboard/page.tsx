@@ -332,7 +332,11 @@ export default function Dashboard() {
 
   return (
     <div className="container mx-auto p-4">
-      {user && <AlertStatus alertsEnabled={user.alertsEnabled} />}
+      {user ? (
+        <AlertStatus alertsEnabled={user.alertsEnabled} />
+      ) : (
+        <AlertStatus alertsEnabled={undefined} />
+      )}
       
       {user?.alertsEnabled && <ActiveAlerts alerts={activeAlerts} />}
       
