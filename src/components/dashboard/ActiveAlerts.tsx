@@ -4,11 +4,26 @@ import { AlertCircle } from "lucide-react"
 import { AlertLog, formatValue, formatDateTime } from "@/services/alertService"
 
 interface ActiveAlertsProps {
-  alerts: AlertLog[]
+  alerts: AlertLog[] | undefined
 }
 
 export function ActiveAlerts({ alerts }: ActiveAlertsProps) {
-  if (alerts.length === 0) return null
+
+  if (alerts === undefined){
+    return (
+      <div className="mb-6 p-4 rounded-lg bg-gray-100 text-gray-800 border border-gray-200">
+        Chargement des alertes...
+      </div>
+    )
+  }
+
+  if (alerts.length === 0){
+    return (
+      <div className="mb-6 p-4 rounded-lg bg-gray-100 text-gray-800 border border-gray-200">
+        Aucune alerte active
+      </div>
+    )
+  }
 
   return (
     <div className="mb-6 p-4 rounded-lg bg-red-100 text-red-800 border border-red-200">

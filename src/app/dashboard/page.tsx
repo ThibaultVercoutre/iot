@@ -333,12 +333,17 @@ export default function Dashboard() {
   return (
     <div className="container mx-auto p-4">
       {user ? (
-        <AlertStatus alertsEnabled={user.alertsEnabled} />
+        <>
+          <AlertStatus alertsEnabled={user.alertsEnabled} />
+          <ActiveAlerts alerts={activeAlerts} />
+        </>
       ) : (
-        <AlertStatus alertsEnabled={undefined} />
+        <>
+          <AlertStatus alertsEnabled={undefined} />
+          <ActiveAlerts alerts={undefined} />
+        </>
       )}
       
-      {user?.alertsEnabled && <ActiveAlerts alerts={activeAlerts} />}
       
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div className="flex items-center gap-3">
