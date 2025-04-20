@@ -358,7 +358,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto p-4 flex-1 flex flex-col">
       {user ? (
         <>
           <AlertStatus alertsEnabled={user.alertsEnabled} />
@@ -408,7 +408,7 @@ export default function Dashboard() {
         />
       </div>
       
-      <div className="grid gap-6">
+      <div className="grid gap-6 flex-1 flex flex-col">
         {filteredDevices.map(device => (
           <Device 
             key={device.id}

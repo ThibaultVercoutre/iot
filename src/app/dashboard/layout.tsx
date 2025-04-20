@@ -53,7 +53,7 @@ export default function DashboardLayout({
           </div>
         </div>
       </nav>
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 flex flex-col">{children}</main>
     </div>
   )
 } 
