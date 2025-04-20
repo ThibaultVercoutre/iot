@@ -97,7 +97,7 @@ export function Device({ device, type, viewMode, selectedPeriod, user, onDeviceC
       <CardHeader>
         <CardTitle className="text-xl mb-4">
           {isLoading ? (
-            <Skeleton className="h-6 w-48 flex-1" />
+            <Skeleton className="w-48 flex-1" />
           ) : (
             device.name
           )}
