@@ -40,10 +40,37 @@ export default function Dashboard() {
   // Référence pour éviter les requêtes simultanées
   const isFetchingRef = useRef(false)
   
+  // Créer des appareils de chargement pour l'état initial
+  const loadingDevices = useMemo(() => {
+    return [
+      {
+        id: -1,
+        name: "En chargement...",
+        sensors: [
+          {
+            id: -1,
+            name: "Chargement du capteur...",
+            uniqueId: "loading-sensor",
+            deviceId: -1,
+            type: "TEMPERATURE" as SensorType,
+            isBinary: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            historicalData: [],
+            alertLogs: [],
+            isInAlert: false
+          }
+        ],
+      }
+    ] as unknown as DeviceType[];
+  }, []);
+  
   // Filtrer les appareils selon les critères sélectionnés
   const filteredDevices = useMemo(() => {
-    return filterDevices(devices, activeAlerts, filters);
-  }, [devices, activeAlerts, filters]);
+    // Si nous avons des appareils réels, les utiliser
+    const devicesToFilter = devices.length > 0 ? devices : loadingDevices;
+    return filterDevices(devicesToFilter, activeAlerts, filters);
+  }, [devices, activeAlerts, filters, loadingDevices]);
 
   // Charger les préférences utilisateur depuis la BD
   useEffect(() => {
