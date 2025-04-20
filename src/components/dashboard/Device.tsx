@@ -8,7 +8,7 @@ import {
   SensorWithData, 
   User
 } from "@/types/sensors"
-import { updateSensorThreshold, deleteSensor, getDeviceSensors } from "@/services/sensorService"
+import { updateSensorThreshold, deleteSensor } from "@/services/sensorService"
 import { AlertLog } from "@/services/alertService"
 import { TimePeriod } from "@/lib/time-utils"
 import { SensorType } from "@prisma/client"
@@ -36,7 +36,9 @@ export function Device({ device, type, viewMode, selectedPeriod, user, onDeviceC
       await updateSensorThreshold(sensorId, numValue)
       
       // Rafraîchir les données
-      const sensors = await getDeviceSensors(device.id, selectedPeriod, timeOffset)
+      // const sensors = await getDeviceSensors(device.id, selectedPeriod, timeOffset)
+      
+      const sensors = device.sensors
       const updatedDevice = {
         ...device,
         sensors
@@ -53,7 +55,9 @@ export function Device({ device, type, viewMode, selectedPeriod, user, onDeviceC
       await deleteSensor(sensor.id)
 
       // Rafraîchir les données
-      const sensors = await getDeviceSensors(device.id, selectedPeriod, timeOffset)
+      // const sensors = await getDeviceSensors(device.id, selectedPeriod, timeOffset)
+      
+      const sensors = device.sensors
       const updatedDevice = {
         ...device,
         sensors
@@ -68,7 +72,9 @@ export function Device({ device, type, viewMode, selectedPeriod, user, onDeviceC
   const handleSensorAdded = async () => {
     try {
       // Rafraîchir les données
-      const sensors = await getDeviceSensors(device.id, selectedPeriod, timeOffset)
+      // const sensors = await getDeviceSensors(device.id, selectedPeriod, timeOffset)
+      
+      const sensors = device.sensors
       const updatedDevice = {
         ...device,
         sensors

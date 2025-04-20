@@ -366,7 +366,7 @@ export default function Dashboard() {
             )}
           </button>
         </div>
-        
+
         <DashboardFiltersComponent
           selectedPeriod={filters.period}
           selectedType={filters.type}
