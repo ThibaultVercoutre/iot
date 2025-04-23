@@ -408,7 +408,7 @@ export default function Dashboard() {
         />
       </div>
       
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col gap-4">
         {filteredDevices.map(device => (
           <Device 
             key={device.id}

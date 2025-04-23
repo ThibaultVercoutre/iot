@@ -6,7 +6,6 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
   reactStrictMode: true,
-  swcMinify: true,
   onDemandEntries: {
     // période de temps en ms pendant laquelle la page sera gardée en mémoire
     maxInactiveAge: 60 * 60 * 1000,
