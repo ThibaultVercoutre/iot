@@ -42,3 +42,21 @@ next-env.d.ts
 
 # script.py
 donnee.txt
+
+.zip
+.rar
+.7z
+.tar
+.tar.gz
+.tar.bz2
+.tar.xz
+
+*.zip
+*.rar
+*.7z
+*.tar
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+
+diagramme.py
